@@ -84,12 +84,17 @@ export async function POST(req: Request) {
       let transport: MCPTransport | { type: 'sse', url: string, headers?: Record<string, string> };
 
       if (mcpServer.type === 'sse') {
+        console.log('Using SSE transport type');
         // Convert headers array to object for SSE transport
         const headers: Record<string, string> = {};
         if (mcpServer.headers && mcpServer.headers.length > 0) {
+          console.log('Processing headers:', mcpServer.headers);
           mcpServer.headers.forEach(header => {
             if (header.key) headers[header.key] = header.value || '';
           });
+          console.log('Processed headers:', headers);
+        } else {
+          console.log('No headers provided');
         }
 
         transport = {
@@ -97,6 +102,34 @@ export async function POST(req: Request) {
           url: mcpServer.url,
           headers: Object.keys(headers).length > 0 ? headers : undefined
         };
+
+        console.log('Transport configuration:', {
+          type: transport.type,
+          url: transport.url,
+          headersPresent: transport.headers ? Object.keys(transport.headers).join(', ') : 'none'
+        });
+        
+        // Validate URL
+        try {
+          new URL(mcpServer.url);
+          console.log('URL is valid');
+        } catch (error) {
+          console.error('Invalid URL format:', mcpServer.url, error);
+        }
+        
+        // Make a test request to check status before actual connection
+        console.log('Making test request to URL:', mcpServer.url);
+        fetch(mcpServer.url, {
+          method: 'HEAD',
+          headers: transport.headers
+        })
+        .then(response => {
+          console.log('Test request response status:', response.status, response.statusText);
+          console.log('Test request response headers:', Object.fromEntries(response.headers.entries()));
+        })
+        .catch(error => {
+          console.error('Test request failed:', error);
+        });
       } else if (mcpServer.type === 'stdio') {
         // For stdio transport, we need command and args
         if (!mcpServer.command || !mcpServer.args || mcpServer.args.length === 0) {
@@ -171,6 +204,7 @@ export async function POST(req: Request) {
       tools = { ...tools, ...mcptools };
     } catch (error) {
       console.error("Failed to initialize MCP client:", error);
+      console.error('MCP Server config:', mcpServer);
       // Continue with other servers instead of failing the entire request
     }
   }
