@@ -7,7 +7,8 @@ interface Params {
   };
 }
 
-export async function GET(request: Request, { params }: Params) {
+// Using any type as a last resort
+export async function GET(request: Request, context: any) {
   try {
     const userId = request.headers.get('x-user-id');
     
@@ -15,7 +16,7 @@ export async function GET(request: Request, { params }: Params) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
     
-    const { id } = await params;
+    const id = context.params.id;
 
     return NextResponse.json([]);
   } catch (error) {
@@ -27,7 +28,7 @@ export async function GET(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(request: Request, { params }: Params) {
+export async function DELETE(request: Request, context: any) {
   try {
     const userId = request.headers.get('x-user-id');
     
@@ -35,7 +36,7 @@ export async function DELETE(request: Request, { params }: Params) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
     
-    const { id } = await params;
+    const id = context.params.id;
 
     return NextResponse.json({ success: true });
   } catch (error) {

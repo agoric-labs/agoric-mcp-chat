@@ -114,7 +114,7 @@ export function ChatSidebar() {
                       "w-full flex items-center gap-2 transition-all",
                       "hover:bg-secondary/50 active:bg-secondary/70 cursor-pointer",
                     )}
-                    tooltip={isCollapsed ? "GitMCP Servers" : undefined}
+                    tooltip={isCollapsed ? "MCP Servers" : undefined}
                   >
                     <ServerIcon
                       className={cn(
@@ -126,7 +126,7 @@ export function ChatSidebar() {
                     />
                     {!isCollapsed && (
                       <span className="flex-grow text-sm text-foreground/80">
-                        GitMCP Servers
+                        MCP Servers
                       </span>
                     )}
                     {activeServersCount > 0 && !isCollapsed ? (
