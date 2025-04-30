@@ -8,4 +8,10 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "services": [
+    {
+      "binding": "MCP",
+      "service": "agoric-mcp-server",
+    }
+  ]
 }
