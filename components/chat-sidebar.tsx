@@ -158,7 +158,7 @@ export function ChatSidebar() {
                 <SidebarMenuItem className="mt-auto">
                   <SidebarMenuButton
                     onClick={() =>
-                      window.open("https://github.com/agoric/agoric-sdk", "_blank")
+                      window.open("https://github.com/agoric-labs/agoric-mcp-chat", "_blank")
                     }
                     className="w-full flex items-center gap-2 transition-all hover:bg-secondary/50 active:bg-secondary/70 cursor-pointer"
                   >
