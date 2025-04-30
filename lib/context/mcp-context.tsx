@@ -14,7 +14,7 @@ export interface MCPServer {
   id: string;
   name: string;
   url: string;
-  type: 'sse' | 'stdio';
+  type: "sse" | "stdio";
   command?: string;
   args?: string[];
   env?: KeyValuePair[];
@@ -24,7 +24,7 @@ export interface MCPServer {
 
 // Type for processed MCP server config for API
 export interface MCPServerApi {
-  type: 'sse' | 'stdio';
+  type: "sse" | "stdio";
   url: string;
   command?: string;
   args?: string[];
@@ -41,18 +41,34 @@ interface MCPContextType {
 }
 
 const MCPContext = createContext<MCPContextType | undefined>(undefined);
+const DEFAULT_MCP_SERVER_ID = "agoric-mcp-server";
+
+const DEFAULT_MCP_SERVER: MCPServer = {
+  id: DEFAULT_MCP_SERVER_ID,
+  name: "Agoric MCP Server",
+  type: "sse",
+  url: "https://agoric-mcp-server.agoric-core.workers.dev/sse",
+};
 
 export function MCPProvider(props: { children: React.ReactNode }) {
   const { children } = props;
-  const [mcpServers, setMcpServers] = useLocalStorage<MCPServer[]>(
-    STORAGE_KEYS.MCP_SERVERS, 
-    []
+  const [_mcpServers, setMcpServers] = useLocalStorage<MCPServer[]>(
+    STORAGE_KEYS.MCP_SERVERS,
+    [DEFAULT_MCP_SERVER]
   );
-  const [selectedMcpServers, setSelectedMcpServers] = useLocalStorage<string[]>(
-    STORAGE_KEYS.SELECTED_MCP_SERVERS, 
-    []
-  );
+  const [_selectedMcpServers, setSelectedMcpServers] = useLocalStorage<
+    string[]
+  >(STORAGE_KEYS.SELECTED_MCP_SERVERS, [DEFAULT_MCP_SERVER_ID]);
   const [mcpServersForApi, setMcpServersForApi] = useState<MCPServerApi[]>([]);
+
+  const mcpServers = !_mcpServers.find(({ id }) => id === DEFAULT_MCP_SERVER_ID)
+    ? [DEFAULT_MCP_SERVER, ..._mcpServers]
+    : _mcpServers;
+  const selectedMcpServers = !_selectedMcpServers.find(
+    (id) => id === DEFAULT_MCP_SERVER_ID
+  )
+    ? [DEFAULT_MCP_SERVER_ID, ..._selectedMcpServers]
+    : _selectedMcpServers;
 
   // Process MCP servers for API consumption whenever server data changes
   useEffect(() => {
@@ -60,30 +76,40 @@ export function MCPProvider(props: { children: React.ReactNode }) {
       setMcpServersForApi([]);
       return;
     }
-    
+
     const processedServers: MCPServerApi[] = selectedMcpServers
-      .map(id => mcpServers.find(server => server.id === id))
+      .map((id) => mcpServers.find((server) => server.id === id))
       .filter((server): server is MCPServer => Boolean(server))
-      .map(server => ({
+      .map((server) => ({
         type: server.type,
         url: server.url,
         command: server.command,
         args: server.args,
         env: server.env,
-        headers: server.headers
+        headers: server.headers,
       }));
-    
+
     setMcpServersForApi(processedServers);
   }, [mcpServers, selectedMcpServers]);
 
   return (
-    <MCPContext.Provider 
-      value={{ 
-        mcpServers, 
-        setMcpServers, 
-        selectedMcpServers, 
-        setSelectedMcpServers,
-        mcpServersForApi 
+    <MCPContext.Provider
+      value={{
+        mcpServers,
+        setMcpServers: (servers) =>
+          setMcpServers(
+            !servers.find(({ id }) => id === DEFAULT_MCP_SERVER_ID)
+              ? [DEFAULT_MCP_SERVER, ...servers]
+              : servers
+          ),
+        selectedMcpServers,
+        setSelectedMcpServers: (serverIds) =>
+          setSelectedMcpServers(
+            !serverIds.find((id) => id === DEFAULT_MCP_SERVER_ID)
+              ? [DEFAULT_MCP_SERVER_ID, ...serverIds]
+              : serverIds
+          ),
+        mcpServersForApi,
       }}
     >
       {children}
@@ -97,4 +123,4 @@ export function useMCP() {
     throw new Error("useMCP must be used within an MCPProvider");
   }
   return context;
-} 
+}
