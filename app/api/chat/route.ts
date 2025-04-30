@@ -1,7 +1,6 @@
 import { model, type modelID } from "@/ai/providers";
 import { streamText, type UIMessage } from "ai";
 import { appendResponseMessages } from 'ai';
-import { saveChat, saveMessages, convertToDBMessages } from '@/lib/chat-store';
 import { nanoid } from 'nanoid';
 import { db } from '@/lib/db';
 import { chats } from '@/lib/db/schema';
@@ -242,14 +241,14 @@ export async function POST(req: Request) {
         responseMessages: response.messages,
       });
 
-      await saveChat({
-        id,
-        userId,
-        messages: allMessages,
-      });
+      // await saveChat({
+      //   id,
+      //   userId,
+      //   messages: allMessages,
+      // });
 
-      const dbMessages = convertToDBMessages(allMessages, id);
-      await saveMessages({ messages: dbMessages });
+      // const dbMessages = convertToDBMessages(allMessages, id);
+      // await saveMessages({ messages: dbMessages });
       // close all mcp clients
       // for (const client of mcpClients) {
       //   await client.close();

@@ -37,8 +37,8 @@ import { KeyValuePair, MCPServer } from "@/lib/context/mcp-context";
 
 // Default template for a new MCP server
 const INITIAL_NEW_SERVER: Omit<MCPServer, 'id'> = {
-    name: '',
-    url: '',
+    name: 'test',
+    url: 'test',
     type: 'sse',
     command: 'node',
     args: [],

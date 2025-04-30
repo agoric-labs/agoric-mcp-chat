@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getChatById, deleteChat } from "@/lib/chat-store";
+
 
 interface Params {
   params: {
@@ -16,16 +16,8 @@ export async function GET(request: Request, { params }: Params) {
     }
     
     const { id } = await params;
-    const chat = await getChatById(id, userId);
-    
-    if (!chat) {
-      return NextResponse.json(
-        { error: "Chat not found" },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json(chat);
+
+    return NextResponse.json([]);
   } catch (error) {
     console.error("Error fetching chat:", error);
     return NextResponse.json(
@@ -44,7 +36,7 @@ export async function DELETE(request: Request, { params }: Params) {
     }
     
     const { id } = await params;
-    await deleteChat(id, userId);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting chat:", error);
