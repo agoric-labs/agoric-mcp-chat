@@ -3005,6 +3005,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@next/eslint-plugin-next@npm:^15.3.1":
+  version: 15.3.1
+  resolution: "@next/eslint-plugin-next@npm:15.3.1"
+  dependencies:
+    fast-glob: "npm:3.3.1"
+  checksum: 10c0/b25938a2a8ff7d5a4267f39cf8dd686026ce853e2cb73e2b3e2b398d135a4913a97f773f7d3f3382dc2f6287772ea0728af9935735a95f52d9f6d2beba7b8201
+  languageName: node
+  linkType: hard
+
 "@next/swc-darwin-arm64@npm:15.3.1":
   version: 15.3.1
   resolution: "@next/swc-darwin-arm64@npm:15.3.1"
@@ -3196,9 +3205,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@opennextjs/cloudflare@npm:1.0.0-beta.3":
-  version: 1.0.0-beta.3
-  resolution: "@opennextjs/cloudflare@npm:1.0.0-beta.3"
+"@opennextjs/cloudflare@npm:1.0.0-beta.4":
+  version: 1.0.0-beta.4
+  resolution: "@opennextjs/cloudflare@npm:1.0.0-beta.4"
   dependencies:
     "@dotenvx/dotenvx": "npm:1.31.0"
     "@opennextjs/aws": "npm:3.5.7"
@@ -3206,10 +3215,10 @@ __metadata:
     glob: "npm:^11.0.0"
     ts-tqdm: "npm:^0.8.6"
   peerDependencies:
-    wrangler: ^3.114.3 || ^4.7.0
+    wrangler: ^4.7.0
   bin:
     opennextjs-cloudflare: dist/cli/index.js
-  checksum: 10c0/dd01673a4d5fa76ff75781fe016d6834b9f4c174f219230a579de0257657981da083aaeba6ae12ad628f01030e0d4c3a721e0ffacc1648c2b6d443b138a1eea0
+  checksum: 10c0/a7ccef1ce9b6e2fff1ada6110c8973f06289fd5c45c0e700673e0a6cebc116cc2794c0fafca876b69f8be93e410528e58eafa39186c77611e855aec5514ed3ea
   languageName: node
   linkType: hard
 
@@ -5745,7 +5754,8 @@ __metadata:
     "@ai-sdk/xai": "npm:^1.2.14"
     "@eslint/eslintrc": "npm:^3.3.1"
     "@neondatabase/serverless": "npm:^1.0.0"
-    "@opennextjs/cloudflare": "npm:1.0.0-beta.3"
+    "@next/eslint-plugin-next": "npm:^15.3.1"
+    "@opennextjs/cloudflare": "npm:1.0.0-beta.4"
     "@radix-ui/react-accordion": "npm:^1.2.7"
     "@radix-ui/react-avatar": "npm:^1.1.6"
     "@radix-ui/react-dialog": "npm:^1.1.10"
