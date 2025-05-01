@@ -22,7 +22,7 @@ const queryClient = new QueryClient({
 export function Providers({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>(
     STORAGE_KEYS.SIDEBAR_STATE,
-    true
+    false
   );
 
   return (

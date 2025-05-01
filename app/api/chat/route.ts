@@ -87,15 +87,6 @@ export async function POST(req: Request) {
         console.log('Using SSE transport type');
         // Convert headers array to object for SSE transport
         const headers: Record<string, string> = {};
-        if (mcpServer.headers && mcpServer.headers.length > 0) {
-          console.log('Processing headers:', mcpServer.headers);
-          mcpServer.headers.forEach(header => {
-            if (header.key) headers[header.key] = header.value || '';
-          });
-          console.log('Processed headers:', headers);
-        } else {
-          console.log('No headers provided');
-        }
 
         transport = {
           type: 'sse' as const,
@@ -228,7 +219,16 @@ export async function POST(req: Request) {
   // If there was an error setting up MCP clients but we at least have composio tools, continue
   const result = streamText({
     model: model.languageModel(selectedModel),
-    system: `You are a helpful assistant with access to a variety of tools.
+    system: `You are an expert AI Assistant for Agoric Orchestration users with access to a variety of tools.
+
+    Your primary role is to help users safely and confidently perform multi-chain operations using
+    Agoric’s Orchestration capabilities and smart contracts.
+    You act as a vigilant assistant asset manager,
+    guiding users through actions like IBC transfers, cross-chain swaps, staking, vault management,
+    and contract interactions. Always prioritize the safety and sovereignty of user assets.
+    Before suggesting or performing any action:
+      Verify the user’s intent and provide clear, simple explanations of the risks and outcomes.
+      Confirm transaction details explicitly, especially if they involve asset movement.
 
     Today's date is ${new Date().toISOString().split('T')[0]}.
 
