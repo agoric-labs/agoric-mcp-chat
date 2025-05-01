@@ -27,6 +27,7 @@ interface ChatData {
 }
 
 export default function Chat() {
+  const [showCarousel, setShowCarousel] = useState(false);
   const router = useRouter();
   const params = useParams();
   const chatId = params?.id as string | undefined;
@@ -42,6 +43,9 @@ export default function Chat() {
   // Initialize userId
   useEffect(() => {
     setUserId(getUserId());
+    if (router.pathname === '/') {
+      setShowCarousel(true);
+    }
   }, []);
   
   // Generate a chat ID if needed
@@ -90,7 +94,7 @@ export default function Chat() {
       
       // Submit the form
       handleSubmit(e);
-      
+      setShowCarousel(false);
       // Redirect to the chat page with the generated ID
       router.push(`/chat/${effectiveChatId}`);
     } else {
@@ -142,7 +146,9 @@ export default function Chat() {
           </form>
         </>
       )}
-      <VerticalTextCarousel/>
+      {
+        setShowCarousel && <VerticalTextCarousel/>
+      }
     </div>
   );
 }
