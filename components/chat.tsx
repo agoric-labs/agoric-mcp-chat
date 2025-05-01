@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Message as DBMessage } from "@/lib/db/schema";
 import { nanoid } from "nanoid";
 import { useMCP } from "@/lib/context/mcp-context";
+import VerticalTextCarousel from "@/components/ui/carousel";
 
 // Type for chat data from DB
 interface ChatData {
@@ -141,6 +142,7 @@ export default function Chat() {
           </form>
         </>
       )}
+      <VerticalTextCarousel/>
     </div>
   );
 }
