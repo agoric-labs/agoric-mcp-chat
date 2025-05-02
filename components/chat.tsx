@@ -7,7 +7,7 @@ import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
 import { Messages } from "./messages";
 import { toast } from "sonner";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { getUserId } from "@/lib/user-id";
 import { useLocalStorage } from "@/lib/hooks/use-local-storage";
 import { STORAGE_KEYS } from "@/lib/constants";
@@ -17,6 +17,7 @@ import { type Message as DBMessage } from "@/lib/db/schema";
 import { nanoid } from "nanoid";
 import { useMCP } from "@/lib/context/mcp-context";
 import VerticalTextCarousel from "@/components/ui/carousel";
+import { cn } from "@/lib/utils";
 
 // Type for chat data from DB
 interface ChatData {
@@ -29,6 +30,7 @@ interface ChatData {
 export default function Chat() {
   const [showCarousel, setShowCarousel] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const params = useParams();
   const chatId = params?.id as string | undefined;
   const queryClient = useQueryClient();
@@ -40,23 +42,6 @@ export default function Chat() {
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
   
-  // Initialize userId
-  useEffect(() => {
-    setUserId(getUserId());
-    if (router.pathname === '/') {
-      setShowCarousel(true);
-    }
-  }, []);
-  
-  // Generate a chat ID if needed
-  useEffect(() => {
-    if (!chatId) {
-      setGeneratedChatId(nanoid());
-    }
-  }, [chatId]);
-  
-  
-
   const { messages, input, handleInputChange, handleSubmit, status, stop } =
     useChat({
       id: chatId || generatedChatId, // Use generated ID if no chatId in URL
@@ -83,6 +68,19 @@ export default function Chat() {
         );
       },
     });
+
+      // Initialize userId
+  useEffect(() => {
+    setUserId(getUserId());
+    setShowCarousel(pathname === '/' || (pathname.startsWith('/chat/') && messages.length === 0));
+  }, [pathname, messages.length]);
+  
+  // Generate a chat ID if needed
+  useEffect(() => {
+    if (!chatId) {
+      setGeneratedChatId(nanoid());
+    }
+  }, [chatId]);
     
   // Custom submit handler
   const handleFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
@@ -100,6 +98,7 @@ export default function Chat() {
     } else {
       // Normal submission for existing chats
       handleSubmit(e);
+      setShowCarousel(false);
     }
   }, [chatId, generatedChatId, input, handleSubmit, router]);
 
@@ -146,9 +145,17 @@ export default function Chat() {
           </form>
         </>
       )}
-      {
-        setShowCarousel && <VerticalTextCarousel/>
-      }
+      <div 
+        className={cn(
+          "fixed left-0 right-0 transition-all duration-300 ease-in-out ease-out",
+          showCarousel 
+            ? "opacity-100 translate-y-0" 
+            : "opacity-0 translate-y-full pointer-events-none"
+        )}
+        style={{ bottom: "9rem" }}
+      >
+        <VerticalTextCarousel />
+      </div>
     </div>
   );
 }
