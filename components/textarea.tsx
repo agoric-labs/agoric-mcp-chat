@@ -3,8 +3,6 @@ import { Textarea as ShadcnTextarea } from "@/components/ui/textarea";
 import { ArrowUp, Loader2, Code2Icon } from "lucide-react";
 import { ModelPicker } from "./model-picker";
 import { useEffect, useState } from "react";
-import { CodeEditor } from "./code-editor";
-import { AnimatePresence, motion } from "motion/react";
 
 interface InputProps {
   input: string;
@@ -98,24 +96,7 @@ export const Textarea = ({
   };
   
   return (
-    <div className="relative w-full">
-      <AnimatePresence>
-        {showEditor ? (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mb-4"
-          >
-            <CodeEditor
-              language={editorLanguage}
-              onClose={() => setShowEditor(false)}
-              onSubmit={handleEditorSubmit}
-            />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-      
+    <div className="relative w-full">      
       <ShadcnTextarea
         className="resize-none bg-background/50 dark:bg-muted/50 backdrop-blur-sm w-full rounded-2xl pr-12 pt-4 pb-16 border-input focus-visible:ring-ring placeholder:text-muted-foreground"
         value={input}

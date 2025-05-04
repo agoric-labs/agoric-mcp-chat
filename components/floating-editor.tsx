@@ -30,10 +30,7 @@ export function FloatingEditor() {
   }, [closeEditor]);
   
   // Handle editor submit - now uses context state
-  const handleSubmit = useCallback((code: string) => {
-    // Show an alert notification when code is submitted
-    alert("Code Submitted");
-    
+  const handleSubmit = useCallback((code: string) => {    
     // Format the code with proper markdown
     const formattedCode = `\`\`\`${editorLanguage}\n${code}\n\`\`\``;
     
