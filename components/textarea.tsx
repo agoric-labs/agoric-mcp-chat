@@ -114,18 +114,6 @@ export const Textarea = ({
         setSelectedModel={setSelectedModel}
         selectedModel={selectedModel}
       />
-      
-      <div className="flex items-center gap-2 absolute left-2 bottom-2">
-        <button
-          type="button"
-          onClick={toggleEditor}
-          disabled={isLoading}
-          className="rounded-full p-2 bg-muted hover:bg-muted/90 text-muted-foreground hover:text-foreground transition-colors"
-          title="Open code editor"
-        >
-          <Code2Icon className="h-4 w-4" />
-        </button>
-      </div>
 
       <button
         type={isStreaming ? "button" : "submit"}

@@ -15,7 +15,7 @@ interface CodeBlockProps {
 }
 
 export function CodeBlock({ children, language, className, messageId }: CodeBlockProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(!language);
   const { copy, isCopied } = useCopy();
   const { openEditor } = useEditor();
 
@@ -45,82 +45,83 @@ export function CodeBlock({ children, language, className, messageId }: CodeBloc
       className
     )}>
       {/* Header */}
-      <div 
-        className={cn(
-          "flex items-center justify-between w-full",
-          "py-2 px-3",
-          "bg-muted/60 dark:bg-muted/40 hover:bg-muted/80 dark:hover:bg-muted/60",
-          "transition-colors cursor-pointer",
-        )}
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center space-x-2">
-          <CodeIcon className="w-4 h-4 text-muted-foreground" />
-          <div className="text-xs font-medium text-muted-foreground">
-            {language && (
-              <span className="uppercase">{language}</span>
-            )}
-            <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded text-muted-foreground text-[10px]">
-              {lineCount} {lineCount === 1 ? 'line' : 'lines'}
-            </span>
+      {language && (
+        <div 
+          className={cn(
+            "flex items-center justify-between w-full",
+            "py-2 px-3",
+            "bg-muted/60 dark:bg-muted/40 hover:bg-muted/80 dark:hover:bg-muted/60",
+            "transition-colors cursor-pointer",
+          )}
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center space-x-2">
+            <CodeIcon className="w-4 h-4 text-muted-foreground" />
+            <div className="text-xs font-medium text-muted-foreground">
+              {language && (
+                <span className="uppercase">Orchestration Workflow</span>
+              )}
+              <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded text-muted-foreground text-[10px]">
+                {lineCount} {lineCount === 1 ? 'line' : 'lines'}
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center space-x-1">
-          {/* Copy button */}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopy();
-            }}
-            className={cn(
-              "p-1 rounded-md",
-              "hover:bg-muted-foreground/10 transition-colors",
-              "text-muted-foreground",
-            )}
-            title="Copy code"
-          >
-            {isCopied ? (
-              <CheckIcon className="h-3.5 w-3.5" />
-            ) : (
-              <CopyIcon className="h-3.5 w-3.5" />
-            )}
-          </button>
-          
-          {/* Edit button - only shown if messageId is provided */}
-          {messageId && (
+          <div className="flex items-center space-x-1">
+            {/* Copy button */}
             <button 
               onClick={(e) => {
                 e.stopPropagation();
-                handleEdit();
+                handleCopy();
               }}
               className={cn(
                 "p-1 rounded-md",
                 "hover:bg-muted-foreground/10 transition-colors",
                 "text-muted-foreground",
               )}
-              title="Edit in code editor"
+              title="Copy code"
             >
-              <PencilIcon className="h-3.5 w-3.5" />
+              {isCopied ? (
+                <CheckIcon className="h-3.5 w-3.5" />
+              ) : (
+                <CopyIcon className="h-3.5 w-3.5" />
+              )}
             </button>
-          )}
-          
-          {/* Expand/collapse toggle */}
-          <div className={cn(
-            "flex items-center justify-center",
-            "rounded-full p-0.5 w-5 h-5",
-            "text-muted-foreground hover:text-foreground",
-            "bg-background/80 border border-border/50",
-            "transition-colors ml-1",
-          )}>
-            {isExpanded ? (
-              <ChevronDownIcon className="h-3 w-3" />
-            ) : (
-              <ChevronUpIcon className="h-3 w-3" />
+            
+            {/* Edit button - only shown if messageId is provided */}
+            {messageId && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEdit();
+                }}
+                className={cn(
+                  "p-1 rounded-md",
+                  "hover:bg-muted-foreground/10 transition-colors",
+                  "text-muted-foreground",
+                )}
+                title="Edit in code editor"
+              >
+                <PencilIcon className="h-3.5 w-3.5" />
+              </button>
             )}
+            
+            {/* Expand/collapse toggle */}
+            <div className={cn(
+              "flex items-center justify-center",
+              "rounded-full p-0.5 w-5 h-5",
+              "text-muted-foreground hover:text-foreground",
+              "bg-background/80 border border-border/50",
+              "transition-colors ml-1",
+            )}>
+              {isExpanded ? (
+                <ChevronDownIcon className="h-3 w-3" />
+              ) : (
+                <ChevronUpIcon className="h-3 w-3" />
+              )}
+            </div>
           </div>
         </div>
-      </div>
-      
+      )}
       <AnimatePresence initial={false} mode="wait">
         {!isExpanded ? (
           <motion.div
@@ -131,7 +132,6 @@ export function CodeBlock({ children, language, className, messageId }: CodeBloc
             transition={{ duration: 0.15 }}
             className="bg-zinc-100 dark:bg-zinc-800/50 px-3 py-2 text-xs font-mono text-zinc-700 dark:text-zinc-300 overflow-hidden text-ellipsis whitespace-nowrap"
           >
-            {previewText}
           </motion.div>
         ) : (
           <motion.div

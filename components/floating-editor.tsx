@@ -53,10 +53,9 @@ export function FloatingEditor() {
     <Sheet open={isEditorOpen} onOpenChange={(open) => !open && closeEditor()}>
       <SheetContent className={cn(
         "sm:max-w-2xl w-full",
-        "p-0 pt-6 overflow-hidden flex flex-col"
+        "p-0 pt-0 overflow-hidden flex flex-col"
       )}>
-        <SheetHeader className="px-4 mb-2">
-          <SheetTitle>Edit Code</SheetTitle>
+        <SheetHeader className="px-4 mb-0">
         </SheetHeader>
         
         <div className="flex-1 overflow-hidden px-4 pb-4">
