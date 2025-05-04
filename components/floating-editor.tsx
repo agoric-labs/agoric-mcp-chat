@@ -39,10 +39,10 @@ export function FloatingEditor() {
     // Store the formatted code in context for submission
     setSubmittedCode(formattedCode);
     
-    // Show a toast notification
+    // Show a toast notification but with shorter duration to avoid issues
     toast.success("Message sent to chat", {
       position: "top-center",
-      duration: 2000,
+      duration: 1000,
     });
     
     // Close the editor

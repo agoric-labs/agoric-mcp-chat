@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -107,9 +107,9 @@ export function ToolInvocation({
           {getStatusIcon()}
           <div className="bg-muted/30 rounded-full p-0.5 border border-border/30">
             {isExpanded ? (
-              <ChevronUpIcon className="h-3 w-3 text-foreground/70" />
-            ) : (
               <ChevronDownIcon className="h-3 w-3 text-foreground/70" />
+            ) : (
+              <ChevronUpIcon className="h-3 w-3 text-foreground/70" />
             )}
           </div>
         </div>

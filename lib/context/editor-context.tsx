@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 
 interface EditorContextType {
   isEditorOpen: boolean;
@@ -15,6 +15,7 @@ interface EditorContextType {
   setSubmittedCode: (code: string) => void;
   submittedCode: string | null;
   submissionKey: number; // Add a key to force React to detect changes
+  clearSubmittedCode: () => void; // Function to clear the submitted code after processing
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -57,9 +58,22 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   // Create wrapper for setSubmittedCode that also updates submissionKey
   const setSubmittedCodeWithKey = (code: string) => {
-    setSubmittedCode(code);
-    setSubmissionKey(prevKey => prevKey + 1);
+    // Set the submitted code only if it's different from the current value
+    // This prevents submission loops
+    if (code !== submittedCode) {
+      console.log("CONTEXT: Setting submitted code, was different from current value");
+      setSubmittedCode(code);
+      setSubmissionKey(prevKey => prevKey + 1);
+    } else {
+      console.log("CONTEXT: Ignoring identical code submission to prevent loops");
+    }
   };
+
+  // Function to clear submitted code
+  const clearSubmittedCode = useCallback(() => {
+    console.log("CONTEXT: Clearing submitted code after processing");
+    setSubmittedCode(null);
+  }, []);
 
   return (
     <EditorContext.Provider
@@ -74,6 +88,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         submittedCode,
         setSubmittedCode: setSubmittedCodeWithKey,
         submissionKey,
+        clearSubmittedCode,
       }}
     >
       {children}

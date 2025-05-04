@@ -43,7 +43,7 @@ function ChatContent() {
   const { mcpServersForApi } = useMCP();
   
   // Get the editor context
-  const { submittedCode, editorLanguage, submissionKey } = useEditor();
+  const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } = useEditor();
   
   // Initialize userId
   useEffect(() => {
@@ -124,13 +124,22 @@ function ChatContent() {
     }
   }, [chatId, generatedChatId, input, handleSubmit, router]);
     
+  // Track previous submission to prevent loops
+  const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
+  
   // Listen for submitted code and send it to the chat
   useEffect(() => {
-    console.log("CHAT: submittedCode changed:", submittedCode, "key:", submissionKey);
+    console.log("CHAT: submittedCode changed:", submittedCode, "key:", submissionKey, "lastKey:", lastSubmittedKey);
     
-    // Only proceed if there's submitted code, a valid submission key, and we're not already loading
-    if (submittedCode && submissionKey > 0 && !isLoading) {
-      console.log("CHAT: Preparing to submit code to chat");
+    // Only proceed if:
+    // 1. There's submitted code
+    // 2. Valid submission key that's different from the last one we processed
+    // 3. Not already loading
+    if (submittedCode && submissionKey > 0 && submissionKey !== lastSubmittedKey && !isLoading) {
+      console.log("CHAT: Preparing to submit code to chat, key changed:", submissionKey, "from:", lastSubmittedKey);
+      
+      // Update last submitted key to prevent reprocessing
+      setLastSubmittedKey(submissionKey);
       
       // Set the input value to the submitted code
       const inputEvent = {
@@ -149,9 +158,12 @@ function ChatContent() {
         
         console.log("CHAT: Submitting form with handleFormSubmit");
         handleFormSubmit(formEvent);
+        
+        // Clear the submitted code to prevent resubmission
+        clearSubmittedCode();
       }, 100);
     }
-  }, [submittedCode, submissionKey, isLoading, handleInputChange, handleFormSubmit]);
+  }, [submittedCode, submissionKey, lastSubmittedKey, isLoading, handleInputChange, handleFormSubmit, clearSubmittedCode]);
 
   return (
     <div className="h-dvh flex flex-col justify-center w-full max-w-3xl mx-auto px-4 sm:px-6 md:py-4">

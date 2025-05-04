@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 
 export function useCopy(timeout = 2000) {
-  const [copied, setCopied] = useState(false);
+  const [isCopied, setCopied] = useState(false);
 
   const copy = useCallback(
     async (text: string) => {
@@ -27,5 +27,5 @@ export function useCopy(timeout = 2000) {
     [timeout]
   );
 
-  return { copied, copy };
+  return { isCopied, copy };
 } 

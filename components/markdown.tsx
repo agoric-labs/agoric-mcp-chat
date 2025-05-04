@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { useEditor } from "@/lib/context/editor-context";
 import { PencilIcon } from "lucide-react";
+import { CodeBlock } from "./code-block";
 
 interface MarkdownProps {
   children: string;
@@ -14,34 +15,27 @@ interface MarkdownProps {
   onEdit?: (content: string) => void;
 }
 
-// Component for the edit button
-const EditButton = ({ onClick }: { onClick: () => void }) => {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "absolute top-2 right-2 p-1.5 rounded-full",
-        "bg-primary/10 text-primary hover:bg-primary/20",
-        "transition-opacity opacity-0 group-hover:opacity-100"
-      )}
-      title="Edit with code editor"
-    >
-      <PencilIcon className="h-3.5 w-3.5" />
-    </button>
-  );
-};
+// No longer needed - edit button has been moved to the CodeBlock component
 
 const components: Partial<Components> = {
-  pre: ({ children, ...props }) => (
-    <pre className="overflow-x-auto rounded-lg bg-zinc-100 dark:bg-zinc-800/50 black:bg-zinc-800/50 p-2.5 my-1.5 text-sm" {...props}>
-      {children}
-    </pre>
-  ),
-  code: ({ children, className, ...props }: React.HTMLProps<HTMLElement> & { className?: string }) => {
+  // Basic pre handler - code blocks are now handled by the code component directly
+  pre: ({ node, className, children, ...props }) => {
+    // We'll let the children render normally, as the code component will handle code blocks
+    return (
+      <pre className="my-0 overflow-visible" {...props}>
+        {children}
+      </pre>
+    );
+  },
+  
+  // Handle both inline code and code blocks
+  code: ({ node, inline, className, children, ...props }: any) => {
+    // Extract language from className for code blocks
     const match = /language-(\w+)/.exec(className || '');
-    const isInline = !match && !className;
-
-    if (isInline) {
+    const language = match ? match[1] : '';
+    
+    // Handle inline code
+    if (inline) {
       return (
         <code
           className="px-1 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/50 black:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 black:text-zinc-300 text-[0.9em] font-mono"
@@ -51,11 +45,20 @@ const components: Partial<Components> = {
         </code>
       );
     }
-    return (
-      <code className={cn("block font-mono text-sm", className)} {...props}>
-        {children}
-      </code>
-    );
+    
+    // Handle code blocks directly here
+    const codeContent = typeof children === 'string' 
+      ? children 
+      : Array.isArray(children) 
+        ? children.map(child => typeof child === 'string' ? child : '').join('') 
+        : '';
+    
+    if (codeContent) {
+      return <CodeBlock language={language}>{codeContent}</CodeBlock>;
+    }
+    
+    // Fallback if we couldn't extract content
+    return <code className={className} {...props}>{children}</code>;
   },
   ol: ({ node, children, ...props }) => (
     <ol className="list-decimal list-outside ml-4 space-y-0.5 my-1.5" {...props}>
@@ -179,33 +182,52 @@ const components: Partial<Components> = {
 const remarkPlugins = [remarkGfm];
 
 const NonMemoizedMarkdown = ({ children, messageId, isEditable = false }: MarkdownProps) => {
-  const { openEditor } = useEditor();
-  
-  const handleEdit = () => {
-    if (messageId) {
-      // Detect if content appears to be code and try to guess the language
-      let language = "markdown";
+  // Create a modified components object that includes the messageId
+  const markdownComponents = {
+    ...components,
+    code: ({ node, inline, className, children, ...props }: any) => {
+      // Extract language from className for code blocks
+      const match = /language-(\w+)/.exec(className || '');
+      const language = match ? match[1] : '';
       
-      // Check if the content has a code block with a language specifier
-      const codeBlockMatch = children.match(/```(\w+)/);
-      if (codeBlockMatch && codeBlockMatch[1]) {
-        language = codeBlockMatch[1];
+      // Handle inline code
+      if (inline) {
+        return (
+          <code
+            className="px-1 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/50 black:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 black:text-zinc-300 text-[0.9em] font-mono"
+            {...props}
+          >
+            {children}
+          </code>
+        );
       }
       
-      // Open the editor with the content
-      openEditor(children, language, messageId);
+      // Handle code blocks directly here
+      const codeContent = typeof children === 'string' 
+        ? children 
+        : Array.isArray(children) 
+          ? children.map(child => typeof child === 'string' ? child : '').join('') 
+          : '';
+      
+      if (codeContent) {
+        return <CodeBlock 
+          language={language} 
+          messageId={isEditable ? messageId : undefined}
+        >
+          {codeContent}
+        </CodeBlock>;
+      }
+      
+      // Fallback if we couldn't extract content
+      return <code className={className} {...props}>{children}</code>;
     }
   };
   
   return (
-    <div className="relative group">
-      <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
+    <div className="relative">
+      <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
         {children}
       </ReactMarkdown>
-      
-      {isEditable && messageId && (
-        <EditButton onClick={handleEdit} />
-      )}
     </div>
   );
 };
