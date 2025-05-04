@@ -17,6 +17,8 @@ import { type Message as DBMessage } from "@/lib/db/schema";
 import { nanoid } from "nanoid";
 import { useMCP } from "@/lib/context/mcp-context";
 import VerticalTextCarousel from "@/components/ui/carousel";
+import { EditorProvider, useEditor } from "@/lib/context/editor-context";
+import { FloatingEditor } from "./floating-editor";
 
 // Type for chat data from DB
 interface ChatData {
@@ -26,7 +28,8 @@ interface ChatData {
   updatedAt: string;
 }
 
-export default function Chat() {
+// Inner chat component that consumes the EditorContext
+function ChatContent() {
   const router = useRouter();
   const params = useParams();
   const chatId = params?.id as string | undefined;
@@ -39,9 +42,28 @@ export default function Chat() {
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
   
+  // Get the editor context
+  const { submittedCode, editorLanguage, submissionKey } = useEditor();
+  
   // Initialize userId
   useEffect(() => {
     setUserId(getUserId());
+  }, []);
+  
+  // Add event listener for code submissions
+  useEffect(() => {
+    const handleCodeSubmission = (event: any) => {
+      console.log("Code submission detected in chat:", event.detail);
+      // Here you could perform additional actions when code is submitted
+    };
+    
+    // Add event listener
+    window.addEventListener('code-submitted', handleCodeSubmission);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('code-submitted', handleCodeSubmission);
+    };
   }, []);
   
   // Generate a chat ID if needed
@@ -80,7 +102,10 @@ export default function Chat() {
       },
     });
     
-  // Custom submit handler
+  // Define loading state early so it can be used in effects
+  const isLoading = status === "streaming" || status === "submitted";
+  
+  // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -98,8 +123,35 @@ export default function Chat() {
       handleSubmit(e);
     }
   }, [chatId, generatedChatId, input, handleSubmit, router]);
-
-  const isLoading = status === "streaming" || status === "submitted";
+    
+  // Listen for submitted code and send it to the chat
+  useEffect(() => {
+    console.log("CHAT: submittedCode changed:", submittedCode, "key:", submissionKey);
+    
+    // Only proceed if there's submitted code, a valid submission key, and we're not already loading
+    if (submittedCode && submissionKey > 0 && !isLoading) {
+      console.log("CHAT: Preparing to submit code to chat");
+      
+      // Set the input value to the submitted code
+      const inputEvent = {
+        target: { value: submittedCode },
+      } as React.ChangeEvent<HTMLTextAreaElement>;
+      
+      console.log("CHAT: Setting input value:", submittedCode);
+      handleInputChange(inputEvent);
+      
+      // Use a timeout to ensure the input is set before submitting
+      setTimeout(() => {
+        // Create a synthetic form event
+        const formEvent = {
+          preventDefault: () => {},
+        } as React.FormEvent<HTMLFormElement>;
+        
+        console.log("CHAT: Submitting form with handleFormSubmit");
+        handleFormSubmit(formEvent);
+      }, 100);
+    }
+  }, [submittedCode, submissionKey, isLoading, handleInputChange, handleFormSubmit]);
 
   return (
     <div className="h-dvh flex flex-col justify-center w-full max-w-3xl mx-auto px-4 sm:px-6 md:py-4">
@@ -143,6 +195,18 @@ export default function Chat() {
         </>
       )}
       <VerticalTextCarousel/>
+      
+      {/* Floating editor for markdown editing */}
+      <FloatingEditor />
     </div>
+  );
+}
+
+// Main export that wraps the chat content with the editor provider
+export default function Chat() {
+  return (
+    <EditorProvider>
+      <ChatContent />
+    </EditorProvider>
   );
 }

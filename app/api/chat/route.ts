@@ -266,6 +266,9 @@ export async function POST(req: Request) {
 
     Multiple tools can be used in a single response and multiple steps can be used to answer the user's question.
 
+    When a tool is used to generate code (workflow), do not move to next step until the code accepted by the user. 
+    User may review the code and edit it before accepting it, and might give you edited code back to use.
+
     ## Response Format
     - Markdown is supported.
     - Respond according to tool's response.

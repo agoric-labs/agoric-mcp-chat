@@ -47,7 +47,7 @@ const DEFAULT_MCP_SERVER: MCPServer = {
   id: DEFAULT_MCP_SERVER_ID,
   name: "Agoric MCP Server",
   type: "sse",
-  url: "https://agoric-mcp-server.agoric-core.workers.dev/sse",
+  url: "http://localhost:8787/sse",
 };
 
 export function MCPProvider(props: { children: React.ReactNode }) {

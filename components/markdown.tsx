@@ -4,6 +4,32 @@ import React, { memo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
+import { useEditor } from "@/lib/context/editor-context";
+import { PencilIcon } from "lucide-react";
+
+interface MarkdownProps {
+  children: string;
+  messageId?: string;
+  isEditable?: boolean;
+  onEdit?: (content: string) => void;
+}
+
+// Component for the edit button
+const EditButton = ({ onClick }: { onClick: () => void }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "absolute top-2 right-2 p-1.5 rounded-full",
+        "bg-primary/10 text-primary hover:bg-primary/20",
+        "transition-opacity opacity-0 group-hover:opacity-100"
+      )}
+      title="Edit with code editor"
+    >
+      <PencilIcon className="h-3.5 w-3.5" />
+    </button>
+  );
+};
 
 const components: Partial<Components> = {
   pre: ({ children, ...props }) => (
@@ -152,15 +178,42 @@ const components: Partial<Components> = {
 
 const remarkPlugins = [remarkGfm];
 
-const NonMemoizedMarkdown = ({ children }: { children: string }) => {
+const NonMemoizedMarkdown = ({ children, messageId, isEditable = false }: MarkdownProps) => {
+  const { openEditor } = useEditor();
+  
+  const handleEdit = () => {
+    if (messageId) {
+      // Detect if content appears to be code and try to guess the language
+      let language = "markdown";
+      
+      // Check if the content has a code block with a language specifier
+      const codeBlockMatch = children.match(/```(\w+)/);
+      if (codeBlockMatch && codeBlockMatch[1]) {
+        language = codeBlockMatch[1];
+      }
+      
+      // Open the editor with the content
+      openEditor(children, language, messageId);
+    }
+  };
+  
   return (
-    <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
-      {children}
-    </ReactMarkdown>
+    <div className="relative group">
+      <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
+        {children}
+      </ReactMarkdown>
+      
+      {isEditable && messageId && (
+        <EditButton onClick={handleEdit} />
+      )}
+    </div>
   );
 };
 
 export const Markdown = memo(
   NonMemoizedMarkdown,
-  (prevProps, nextProps) => prevProps.children === nextProps.children,
+  (prevProps, nextProps) => 
+    prevProps.children === nextProps.children && 
+    prevProps.messageId === nextProps.messageId && 
+    prevProps.isEditable === nextProps.isEditable
 );

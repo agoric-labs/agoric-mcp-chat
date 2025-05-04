@@ -181,7 +181,12 @@ const PurePreviewMessage = ({
                             message.role === "user",
                         })}
                       >
-                        <Markdown>{part.text}</Markdown>
+                        <Markdown 
+                          messageId={message.id}
+                          isEditable={message.role === "assistant"}
+                        >
+                          {part.text}
+                        </Markdown>
                       </div>
                     </motion.div>
                   );
