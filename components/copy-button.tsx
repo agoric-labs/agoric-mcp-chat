@@ -9,7 +9,7 @@ interface CopyButtonProps {
 }
 
 export function CopyButton({ text, className }: CopyButtonProps) {
-  const { copied, copy } = useCopy();
+  const { isCopied, copy } = useCopy();
 
   return (
     <Button
@@ -22,7 +22,7 @@ export function CopyButton({ text, className }: CopyButtonProps) {
       onClick={() => copy(text)}
       title="Copy to clipboard"
     >
-      {copied ? (
+      {isCopied ? (
         <>
           <CheckIcon className="h-4 w-4" />
           <span className="text-xs">Copied!</span>
