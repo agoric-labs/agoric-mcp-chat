@@ -104,7 +104,7 @@ export function ChatSidebar() {
         </SidebarHeader>
   
         <SidebarContent className="flex flex-col h-[calc(100vh-8rem)]">
-          <SidebarGroup className="flex-shrink-0 pl-0 h-full">
+          <SidebarGroup className="flex-shrink-0 h-full">
             <SidebarGroupContent className="h-full flex flex-col">
               <SidebarMenu className="h-full flex flex-col">
                 <SidebarMenuItem>
