@@ -184,6 +184,8 @@ function ChatContent() {
               stop={stop}
             />
           </form>
+          {/* Only show carousel when no messages exist */}
+          <VerticalTextCarousel/>
         </div>
       ) : (
         <>
@@ -206,7 +208,6 @@ function ChatContent() {
           </form>
         </>
       )}
-      <VerticalTextCarousel/>
       
       {/* Floating editor for markdown editing */}
       <FloatingEditor />
