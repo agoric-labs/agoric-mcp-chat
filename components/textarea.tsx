@@ -110,10 +110,10 @@ export const Textarea = ({
           }
         }}
       />
-      <ModelPicker
+      {/* <ModelPicker
         setSelectedModel={setSelectedModel}
         selectedModel={selectedModel}
-      />
+      /> */}
 
       <button
         type={isStreaming ? "button" : "submit"}
