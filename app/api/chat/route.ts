@@ -251,6 +251,7 @@ export async function POST(req: Request) {
     Abbreviations:
     PSM = Parity Stability Module
     MCP = Model Context Protocol (this is not a prodocut from agoric)
+    IBC = Inter-Blockchain Communication
 
     Today's date is ${new Date().toISOString().split('T')[0]}.
 
