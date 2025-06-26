@@ -5,10 +5,9 @@ import { useState, useEffect, useRef } from 'react';
 const VerticalTextCarousel = () => {
   // Sample texts to display in the carousel
   const texts = [
-    "What smart contracts are currently deployed on Agoric?",
     "What's the latest proposal from the Economic Committee?",
     "What's the balance of this Agoric address: agoric1...",
-    "I'd like to swap 10 IST to USDC",
+    "Show me all the YMax portfolio positions",
     "Can you explain what happened in this transaction: 1A2B3C..."
   ];
 
@@ -47,7 +46,7 @@ const VerticalTextCarousel = () => {
   };
 
   return (
-    <div className="flex flex-col justify-center w-full mx-auto px-4 sm:px-6 md:py-4">
+    <div className="hidden sm:flex flex-col justify-center w-full mx-auto px-4 sm:px-6 md:py-4">
         <div className="relative h-32 overflow-hidden">
           {/* This is the transitioning container */}
           <div 

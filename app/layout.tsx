@@ -44,7 +44,7 @@ export default function RootLayout({
           <div className="flex h-dvh w-full">
             <ChatSidebar />
             <main className="flex-1 flex flex-col relative">
-              <div className="absolute top-4 left-4 z-50">
+              <div className="absolute top-4 left-4 z-50 hidden md:block">
                 <SidebarTrigger>
                   <button className="flex items-center justify-center h-8 w-8 bg-muted hover:bg-accent rounded-md transition-colors">
                     <Menu className="h-4 w-4" />
