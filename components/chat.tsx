@@ -2,7 +2,7 @@
 
 import { defaultModel, type modelID } from "@/ai/providers";
 import { Message, useChat } from "@ai-sdk/react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
 import { Messages } from "./messages";
@@ -237,7 +237,9 @@ function ChatContent() {
 export default function Chat() {
   return (
     <EditorProvider>
-      <ChatContent />
+      <Suspense fallback={<div>Loading...</div>}>
+        <ChatContent />
+      </Suspense>
     </EditorProvider>
   );
 }
