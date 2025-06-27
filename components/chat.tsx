@@ -7,7 +7,7 @@ import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
 import { Messages } from "./messages";
 import { toast } from "sonner";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { getUserId } from "@/lib/user-id";
 import { useLocalStorage } from "@/lib/hooks/use-local-storage";
 import { STORAGE_KEYS } from "@/lib/constants";
@@ -32,7 +32,9 @@ interface ChatData {
 function ChatContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const chatId = params?.id as string | undefined;
+  const contextParam = searchParams.get('context');
   const queryClient = useQueryClient();
   
   const [selectedModel, setSelectedModel] = useLocalStorage<modelID>("selectedModel", defaultModel);
@@ -40,7 +42,7 @@ function ChatContent() {
   const [generatedChatId, setGeneratedChatId] = useState<string>('');
   
   // Get MCP server data from context
-  const { mcpServersForApi } = useMCP();
+  const { mcpServersForApi, setContextOverride } = useMCP();
   
   // Get the editor context
   const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } = useEditor();
@@ -49,6 +51,21 @@ function ChatContent() {
   useEffect(() => {
     setUserId(getUserId());
   }, []);
+
+  // Parse and set context override from URL parameter
+  useEffect(() => {
+    if (contextParam) {
+      try {
+        const parsedContext = JSON.parse(decodeURIComponent(contextParam));
+        setContextOverride(parsedContext);
+      } catch (error) {
+        console.error('Failed to parse context parameter:', error);
+        setContextOverride(null);
+      }
+    } else {
+      setContextOverride(null);
+    }
+  }, [contextParam, setContextOverride]);
   
   // Add event listener for code submissions
   useEffect(() => {
@@ -116,13 +133,14 @@ function ChatContent() {
       // Submit the form
       handleSubmit(e);
       
-      // Redirect to the chat page with the generated ID
-      router.push(`/chat/${effectiveChatId}`);
+      // Preserve context parameter in navigation
+      const contextQuery = contextParam ? `?context=${encodeURIComponent(contextParam)}` : '';
+      router.push(`/chat/${effectiveChatId}${contextQuery}`);
     } else {
       // Normal submission for existing chats
       handleSubmit(e);
     }
-  }, [chatId, generatedChatId, input, handleSubmit, router]);
+  }, [chatId, generatedChatId, input, handleSubmit, router, contextParam]);
     
   // Track previous submission to prevent loops
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);

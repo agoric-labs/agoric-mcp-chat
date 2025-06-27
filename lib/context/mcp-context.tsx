@@ -38,6 +38,8 @@ interface MCPContextType {
   selectedMcpServers: string[];
   setSelectedMcpServers: (serverIds: string[]) => void;
   mcpServersForApi: MCPServerApi[];
+  contextOverride: any | null;
+  setContextOverride: (context: any | null) => void;
 }
 
 const MCPContext = createContext<MCPContextType | undefined>(undefined);
@@ -60,6 +62,7 @@ export function MCPProvider(props: { children: React.ReactNode }) {
     string[]
   >(STORAGE_KEYS.SELECTED_MCP_SERVERS, [DEFAULT_MCP_SERVER_ID]);
   const [mcpServersForApi, setMcpServersForApi] = useState<MCPServerApi[]>([]);
+  const [contextOverride, setContextOverride] = useState<any | null>(null);
 
   const mcpServers = !_mcpServers.find(({ id }) => id === DEFAULT_MCP_SERVER_ID)
     ? [DEFAULT_MCP_SERVER, ..._mcpServers]
@@ -110,6 +113,8 @@ export function MCPProvider(props: { children: React.ReactNode }) {
               : serverIds
           ),
         mcpServersForApi,
+        contextOverride,
+        setContextOverride,
       }}
     >
       {children}
