@@ -42,7 +42,7 @@ function ChatContent() {
   const [generatedChatId, setGeneratedChatId] = useState<string>('');
   
   // Get MCP server data from context
-  const { mcpServersForApi, setContextOverride } = useMCP();
+  const { mcpServersForApi } = useMCP();
   
   // Get the editor context
   const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } = useEditor();
@@ -52,20 +52,6 @@ function ChatContent() {
     setUserId(getUserId());
   }, []);
 
-  // Parse and set context override from URL parameter
-  useEffect(() => {
-    if (contextParam) {
-      try {
-        const parsedContext = JSON.parse(decodeURIComponent(contextParam));
-        setContextOverride(parsedContext);
-      } catch (error) {
-        console.error('Failed to parse context parameter:', error);
-        setContextOverride(null);
-      }
-    } else {
-      setContextOverride(null);
-    }
-  }, [contextParam, setContextOverride]);
   
   // Add event listener for code submissions
   useEffect(() => {
@@ -92,7 +78,7 @@ function ChatContent() {
   
   
 
-  const { messages, input, handleInputChange, handleSubmit, status, stop } =
+  const { messages, input, handleInputChange, handleSubmit, append, status, stop } =
     useChat({
       id: chatId || generatedChatId, // Use generated ID if no chatId in URL
       maxSteps: 20,
@@ -126,21 +112,41 @@ function ChatContent() {
   const handleFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
+    // Check if this is the first message and we have context to prepend
+    const isFirstMessage = messages.length === 0;
+    const shouldPrependContext = isFirstMessage && contextParam && input.trim();
+    
+    if (shouldPrependContext) {
+      try {
+        const parsedContext = JSON.parse(decodeURIComponent(contextParam));
+        const contextString = JSON.stringify(parsedContext);
+        const messageWithContext = `Context: ${contextString}\n\n${input}`;
+        
+        // Use append to send the message with context without modifying the input field
+        append({
+          role: 'user',
+          content: messageWithContext
+        });
+        
+        // Clear the input field
+        handleInputChange({ target: { value: '' } } as any);
+      } catch (error) {
+        console.error('Failed to parse context parameter:', error);
+        handleSubmit(e);
+      }
+    } else {
+      handleSubmit(e);
+    }
+    
     if (!chatId && generatedChatId && input.trim()) {
       // If this is a new conversation, redirect to the chat page with the generated ID
       const effectiveChatId = generatedChatId;
       
-      // Submit the form
-      handleSubmit(e);
-      
       // Preserve context parameter in navigation
       const contextQuery = contextParam ? `?context=${encodeURIComponent(contextParam)}` : '';
       router.push(`/chat/${effectiveChatId}${contextQuery}`);
-    } else {
-      // Normal submission for existing chats
-      handleSubmit(e);
     }
-  }, [chatId, generatedChatId, input, handleSubmit, router, contextParam]);
+  }, [chatId, generatedChatId, input, handleSubmit, handleInputChange, append, router, contextParam, messages.length]);
     
   // Track previous submission to prevent loops
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
