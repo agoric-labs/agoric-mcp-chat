@@ -166,7 +166,7 @@ function ChatContent() {
   }, [submittedCode, submissionKey, lastSubmittedKey, isLoading, handleInputChange, handleFormSubmit, clearSubmittedCode]);
 
   return (
-    <div className="h-dvh flex flex-col justify-center w-full max-w-3xl mx-auto px-4 sm:px-6 md:py-4">
+    <div className="h-dvh flex flex-col justify-center w-full max-w-3xl mx-auto px-2 xs:px-4 sm:px-6 py-2 xs:py-4 md:py-4 min-w-0">
       {messages.length === 0 ? (
         <div className="max-w-xl mx-auto w-full">
           <ProjectOverview />
@@ -194,7 +194,7 @@ function ChatContent() {
           </div>
           <form
             onSubmit={handleFormSubmit}
-            className="mt-2 w-full mx-auto mb-4 sm:mb-auto"
+            className="mt-2 w-full mx-auto mb-2 xs:mb-4 sm:mb-auto px-2 xs:px-0"
           >
             <Textarea
               selectedModel={selectedModel}

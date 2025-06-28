@@ -38,7 +38,7 @@ const components: Partial<Components> = {
     if (inline) {
       return (
         <code
-          className="px-1 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/50 black:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 black:text-zinc-300 text-[0.9em] font-mono"
+          className="px-1 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/50 black:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 black:text-zinc-300 text-[0.9em] font-mono break-all"
           {...props}
         >
           {children}
@@ -76,7 +76,7 @@ const components: Partial<Components> = {
     </li>
   ),
   p: ({ node, children, ...props }) => (
-    <p className="leading-relaxed my-1" {...props}>
+    <p className="leading-relaxed my-1 break-words overflow-x-auto" {...props}>
       {children}
     </p>
   ),
@@ -194,7 +194,7 @@ const NonMemoizedMarkdown = ({ children, messageId, isEditable = false }: Markdo
       if (inline) {
         return (
           <code
-            className="px-1 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/50 black:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 black:text-zinc-300 text-[0.9em] font-mono"
+            className="px-1 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/50 black:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 black:text-zinc-300 text-[0.9em] font-mono break-all"
             {...props}
           >
             {children}
@@ -224,7 +224,7 @@ const NonMemoizedMarkdown = ({ children, messageId, isEditable = false }: Markdo
   };
   
   return (
-    <div className="relative">
+    <div className="relative w-full min-w-0 break-words overflow-x-auto">
       <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
         {children}
       </ReactMarkdown>

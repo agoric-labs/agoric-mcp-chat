@@ -98,7 +98,7 @@ export const Textarea = ({
   return (
     <div className="relative w-full">      
       <ShadcnTextarea
-        className="resize-none bg-background/50 dark:bg-muted/50 backdrop-blur-sm w-full rounded-2xl pr-12 pt-4 pb-16 border-input focus-visible:ring-ring placeholder:text-muted-foreground"
+        className="bg-background/50 dark:bg-muted/50 backdrop-blur-sm w-full rounded-2xl pr-10 xs:pr-12 pt-3 xs:pt-4 pb-12 xs:pb-16 border-input focus-visible:ring-ring placeholder:text-muted-foreground min-h-10 xs:min-h-12 max-h-16 xs:max-h-20 sm:max-h-24 md:max-h-32"
         value={input}
         autoFocus
         placeholder="Send a message..."
@@ -119,12 +119,12 @@ export const Textarea = ({
         type={isStreaming ? "button" : "submit"}
         onClick={isStreaming ? stop : undefined}
         disabled={(!isStreaming && !input.trim()) || (isStreaming && status === "submitted")}
-        className="absolute right-2 bottom-2 rounded-full p-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed transition-all duration-200"
+        className="absolute right-1 xs:right-2 bottom-1 xs:bottom-2 rounded-full p-1.5 xs:p-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed transition-all duration-200"
       >
         {isStreaming ? (
-          <Loader2 className="h-4 w-4 text-primary-foreground animate-spin" />
+          <Loader2 className="h-3 w-3 xs:h-4 xs:w-4 text-primary-foreground animate-spin" />
         ) : (
-          <ArrowUp className="h-4 w-4 text-primary-foreground" />
+          <ArrowUp className="h-3 w-3 xs:h-4 xs:w-4 text-primary-foreground" />
         )}
       </button>
     </div>
