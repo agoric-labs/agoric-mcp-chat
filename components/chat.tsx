@@ -194,7 +194,7 @@ function ChatContent() {
           </div>
           <form
             onSubmit={handleFormSubmit}
-            className="mt-2 w-full mx-auto mb-4 sm:mb-auto"
+            className="mt-2 w-[380px] h-[500px] sm:w-full sm:h-full mx-auto mb-4 sm:mb-auto"
           >
             <Textarea
               selectedModel={selectedModel}
