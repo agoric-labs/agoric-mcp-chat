@@ -172,7 +172,7 @@ function ChatContent() {
           <ProjectOverview />
           <form
             onSubmit={handleFormSubmit}
-            className="mt-4 w-full mx-auto"
+            className="mt-4 w-[380px] h-[500px] sm:w-full sm:h-full mx-auto"
           >
             <Textarea
               selectedModel={selectedModel}
