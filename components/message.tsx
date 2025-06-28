@@ -150,8 +150,8 @@ const PurePreviewMessage = ({
     <AnimatePresence key={message.id}>
       <motion.div
         className={cn(
-          "w-full mx-auto px-4 group/message",
-          message.role === "assistant" ? "mb-8" : "mb-6"
+          "w-full mx-auto px-1 xs:px-2 sm:px-4 group/message break-words overflow-x-auto",
+          message.role === "assistant" ? "mb-4 xs:mb-6 sm:mb-8" : "mb-3 xs:mb-4 sm:mb-6"
         )}
         initial={{ y: 5, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -160,11 +160,11 @@ const PurePreviewMessage = ({
       >
         <div
           className={cn(
-            "flex gap-4 w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl",
-            "group-data-[role=user]/message:w-fit",
+            "flex gap-2 xs:gap-4 w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl",
+            "group-data-[role=user]/message:w-fit min-w-0 break-words overflow-x-auto",
           )}
         >
-          <div className="flex flex-col w-full space-y-3">
+          <div className="flex flex-col w-full space-y-3 min-w-0">
             {message.parts?.map((part, i) => {
               switch (part.type) {
                 case "text":
@@ -173,11 +173,11 @@ const PurePreviewMessage = ({
                       initial={{ y: 5, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       key={`message-${message.id}-part-${i}`}
-                      className="flex flex-row gap-2 items-start w-full"
+                      className="flex flex-row gap-2 items-start w-full min-w-0"
                     >
                       <div
-                        className={cn("flex flex-col gap-3 w-full", {
-                          "bg-secondary text-secondary-foreground px-4 py-3 rounded-2xl":
+                        className={cn("flex flex-col gap-3 w-full min-w-0 break-words overflow-x-auto", {
+                          "bg-secondary text-secondary-foreground px-2 xs:px-3 sm:px-4 py-2 xs:py-3 rounded-2xl":
                             message.role === "user",
                         })}
                       >
