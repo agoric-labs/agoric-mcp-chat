@@ -78,7 +78,7 @@ function ChatContent() {
   
   
 
-  const { messages, input, handleInputChange, handleSubmit, append, status, stop } =
+  const { messages, input, handleInputChange, handleSubmit, status, stop } =
     useChat({
       id: chatId || generatedChatId, // Use generated ID if no chatId in URL
       maxSteps: 20,
@@ -103,6 +103,7 @@ function ChatContent() {
           { position: "top-center", richColors: true },
         );
       },
+      api: contextParam ? `/api/chat?context=${contextParam}` : '/api/chat'
     });
     
   // Define loading state early so it can be used in effects
@@ -110,43 +111,23 @@ function ChatContent() {
   
   // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    // Check if this is the first message and we have context to prepend
-    const isFirstMessage = messages.length === 0;
-    const shouldPrependContext = isFirstMessage && contextParam && input.trim();
-    
-    if (shouldPrependContext) {
-      try {
-        const parsedContext = JSON.parse(decodeURIComponent(contextParam));
-        const contextString = JSON.stringify(parsedContext);
-        const messageWithContext = `Context: ${contextString}\n\n${input}`;
-        
-        // Use append to send the message with context without modifying the input field
-        append({
-          role: 'user',
-          content: messageWithContext
-        });
-        
-        // Clear the input field
-        handleInputChange({ target: { value: '' } } as any);
-      } catch (error) {
-        console.error('Failed to parse context parameter:', error);
-        handleSubmit(e);
-      }
-    } else {
-      handleSubmit(e);
-    }
+    e.preventDefault(); 
     
     if (!chatId && generatedChatId && input.trim()) {
       // If this is a new conversation, redirect to the chat page with the generated ID
       const effectiveChatId = generatedChatId;
       
+      // Submit the form
+      handleSubmit(e);
+      
       // Preserve context parameter in navigation
       const contextQuery = contextParam ? `?context=${encodeURIComponent(contextParam)}` : '';
       router.push(`/chat/${effectiveChatId}${contextQuery}`);
+    } else {
+      // Normal submission for existing chats
+      handleSubmit(e);
     }
-  }, [chatId, generatedChatId, input, handleSubmit, handleInputChange, append, router, contextParam, messages.length]);
+  }, [chatId, generatedChatId, input, handleSubmit, router, contextParam]);
     
   // Track previous submission to prevent loops
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);

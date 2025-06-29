@@ -11,6 +11,13 @@ import { SpinnerIcon } from "./icons";
 import { ToolInvocation } from "./tool-invocation";
 import { CopyButton } from "./copy-button";
 
+// Helper function to remove context from display text
+const cleanDisplayText = (text: string): string => {
+  // Remove "Context: {json}\n\n" pattern from the beginning
+  const contextPattern = /^Context:\s*\{[\s\S]*?\}\s*\n\n/;
+  return text.replace(contextPattern, '');
+};
+
 interface ReasoningPart {
   type: "reasoning";
   reasoning: string;
@@ -185,7 +192,7 @@ const PurePreviewMessage = ({
                           messageId={message.id}
                           isEditable={message.role === "assistant"}
                         >
-                          {part.text}
+                          {message.role === "user" ? cleanDisplayText(part.text) : part.text}
                         </Markdown>
                       </div>
                     </motion.div>
