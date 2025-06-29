@@ -28,6 +28,10 @@ interface MCPServerConfig {
 }
 
 export async function POST(req: Request) {
+  // Extract context from URL query params
+  const url = new URL(req.url);
+  const contextParam = url.searchParams.get('context');
+  
   const {
     messages,
     chatId,
@@ -216,10 +220,8 @@ export async function POST(req: Request) {
   console.log("messages", messages);
   console.log("parts", messages.map(m => m.parts.map(p => p)));
 
-  // If there was an error setting up MCP clients but we at least have composio tools, continue
-  const result = streamText({
-    model: model.languageModel(selectedModel),
-    system: `You are an expert AI Assistant for Agoric Orchestration users with access to a variety of tools.
+  // Build dynamic system prompt
+  let systemPrompt = `You are an expert AI Assistant for Agoric Orchestration users with access to a variety of tools.
 
     Your primary role is to help users safely and confidently perform multi-chain operations using
     Agoric\’s Orchestration capabilities and smart contracts.
@@ -275,7 +277,26 @@ export async function POST(req: Request) {
     - Respond according to tool's response.
     - Use the tools to answer the user's question.
     - If you don't know the answer, use the tools to find the answer or say you don't know.
-    `,
+    `;
+
+  // Add context to system prompt if provided
+  if (contextParam) {
+    try {
+      const context = decodeURIComponent(contextParam) || '';
+      // Validate it's valid JSON
+      JSON.parse(context);
+      systemPrompt += `\n\nAdditional information regarding a user's profile is provided via Context: ${context}.
+          For example, a user's address, or portfolio, or open positions. Instead of asking for missing 
+          information in a user's query, first defer to this context information and see if this suffices.`;
+    } catch (error) {
+      console.error('Failed to decode context parameter:', error);
+    }
+  }
+
+  // If there was an error setting up MCP clients but we at least have composio tools, continue
+  const result = streamText({
+    model: model.languageModel(selectedModel),
+    system: systemPrompt,
     messages,
     tools,
     maxSteps: 20,

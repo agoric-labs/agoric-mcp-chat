@@ -2,12 +2,12 @@
 
 import { defaultModel, type modelID } from "@/ai/providers";
 import { Message, useChat } from "@ai-sdk/react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
 import { Messages } from "./messages";
 import { toast } from "sonner";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { getUserId } from "@/lib/user-id";
 import { useLocalStorage } from "@/lib/hooks/use-local-storage";
 import { STORAGE_KEYS } from "@/lib/constants";
@@ -32,7 +32,9 @@ interface ChatData {
 function ChatContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const chatId = params?.id as string | undefined;
+  const contextParam = searchParams.get('context');
   const queryClient = useQueryClient();
   
   const [selectedModel, setSelectedModel] = useLocalStorage<modelID>("selectedModel", defaultModel);
@@ -49,6 +51,7 @@ function ChatContent() {
   useEffect(() => {
     setUserId(getUserId());
   }, []);
+
   
   // Add event listener for code submissions
   useEffect(() => {
@@ -100,6 +103,7 @@ function ChatContent() {
           { position: "top-center", richColors: true },
         );
       },
+      api: contextParam ? `/api/chat?context=${contextParam}` : '/api/chat'
     });
     
   // Define loading state early so it can be used in effects
@@ -107,7 +111,7 @@ function ChatContent() {
   
   // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+    e.preventDefault(); 
     
     if (!chatId && generatedChatId && input.trim()) {
       // If this is a new conversation, redirect to the chat page with the generated ID
@@ -116,13 +120,14 @@ function ChatContent() {
       // Submit the form
       handleSubmit(e);
       
-      // Redirect to the chat page with the generated ID
-      router.push(`/chat/${effectiveChatId}`);
+      // Preserve context parameter in navigation
+      const contextQuery = contextParam ? `?context=${encodeURIComponent(contextParam)}` : '';
+      router.push(`/chat/${effectiveChatId}${contextQuery}`);
     } else {
       // Normal submission for existing chats
       handleSubmit(e);
     }
-  }, [chatId, generatedChatId, input, handleSubmit, router]);
+  }, [chatId, generatedChatId, input, handleSubmit, router, contextParam]);
     
   // Track previous submission to prevent loops
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
@@ -219,7 +224,9 @@ function ChatContent() {
 export default function Chat() {
   return (
     <EditorProvider>
-      <ChatContent />
+      <Suspense fallback={<div>Loading...</div>}>
+        <ChatContent />
+      </Suspense>
     </EditorProvider>
   );
 }
