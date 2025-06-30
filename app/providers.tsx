@@ -27,14 +27,13 @@ export function Providers({ children }: { children: ReactNode }) {
   );
   
   const searchParams = useSearchParams();
-  const themeParam = searchParams.get("theme");
+  const themeParam = decodeURIComponent(searchParams.get("theme") || '');
   
   // Available themes
   const availableThemes = ["light", "dark", "sunset", "black", "dark-blue"];
   
   // Use theme from query param if valid, otherwise default to dark-blue
   const defaultTheme = themeParam && availableThemes.includes(themeParam) ? themeParam : "dark-blue";
-  console.log('default theme', defaultTheme)
 
   return (
     <QueryClientProvider client={queryClient}>
