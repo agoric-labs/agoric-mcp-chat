@@ -122,14 +122,16 @@ function ChatContent() {
       // Submit the form
       handleSubmit(e);
       
-      // Preserve context parameter in navigation
-      const contextQuery = contextParam ? `?context=${encodeURIComponent(contextParam)}` : '';
-      router.push(`/chat/${effectiveChatId}${contextQuery}`);
+      // Preserve all query parameters in navigation
+      const searchParams = new URLSearchParams(window.location.search);
+      const queryString = searchParams.toString();
+      const queryQuery = queryString ? `?${queryString}` : '';
+      router.push(`/chat/${effectiveChatId}${queryQuery}`);
     } else {
       // Normal submission for existing chats
       handleSubmit(e);
     }
-  }, [chatId, generatedChatId, input, handleSubmit, router, contextParam]);
+  }, [chatId, generatedChatId, input, handleSubmit, router]);
     
   // Track previous submission to prevent loops
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
