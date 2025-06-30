@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { MessageSquare, PlusCircle, Trash2, ServerIcon, Settings, Sparkles, ChevronsUpDown, Copy, Pencil, Github, Key } from "lucide-react";
 import {
     Sidebar,
@@ -57,6 +57,9 @@ export function ChatSidebar() {
     const [apiKeySettingsOpen, setApiKeySettingsOpen] = useState(false);
     const { state } = useSidebar();
     const isCollapsed = state === "collapsed";
+    const searchParams = useSearchParams();
+    const titleParam = searchParams.get('title');
+    const title = titleParam ? decodeURIComponent(titleParam) : 'Agoric AI Chat';
   
     // Get MCP server data from context
     const {
@@ -96,7 +99,7 @@ export function ChatSidebar() {
               </div>
               {!isCollapsed && (
                 <div className="font-semibold text-lg text-foreground/90">
-                  Agoric AI Chat
+                  {title || 'Agoric AI Chat'}
                 </div>
               )}
             </div>

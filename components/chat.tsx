@@ -35,6 +35,8 @@ function ChatContent() {
   const searchParams = useSearchParams();
   const chatId = params?.id as string | undefined;
   const contextParam = searchParams.get('context');
+  const titleParam = searchParams.get('title');
+  const title = titleParam ? decodeURIComponent(titleParam) : 'Agoric AI Chat';
   const queryClient = useQueryClient();
   
   const [selectedModel, setSelectedModel] = useLocalStorage<modelID>("selectedModel", defaultModel);
@@ -174,7 +176,7 @@ function ChatContent() {
     <div className="h-dvh flex flex-col justify-center w-full max-w-3xl mx-auto px-2 xs:px-4 sm:px-6 py-2 xs:py-4 md:py-4 min-w-0">
       {messages.length === 0 ? (
         <div className="max-w-xl mx-auto w-full">
-          <ProjectOverview />
+          <ProjectOverview heading={title} />
           <form
             onSubmit={handleFormSubmit}
             className="mt-4 w-full mx-auto"

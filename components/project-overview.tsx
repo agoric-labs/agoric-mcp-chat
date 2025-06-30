@@ -1,8 +1,8 @@
 import NextLink from "next/link";
-export const ProjectOverview = () => {
+export const ProjectOverview = ({ heading }: { heading: string }) => {
   return (
     <div className="flex flex-col items-center justify-end">
-      <h1 className="text-3xl font-semibold mb-4">Agoric AI Chat</h1>
+      <h1 className="text-3xl font-semibold mb-4">{heading}</h1>
     </div>
   );
 };
