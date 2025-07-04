@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -20,7 +20,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export function Providers({ children }: { children: ReactNode }) {
+function ThemeWrapper({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>(
     STORAGE_KEYS.SIDEBAR_STATE,
     false
@@ -36,22 +36,30 @@ export function Providers({ children }: { children: ReactNode }) {
   const defaultTheme = themeParam && availableThemes.includes(themeParam) ? themeParam : "dark-blue";
 
   return (
+    <ThemeProvider
+      attribute="class"
+      defaultTheme={defaultTheme}
+      enableSystem={true}
+      disableTransitionOnChange
+      themes={availableThemes}
+      forcedTheme={themeParam && availableThemes.includes(themeParam) ? themeParam : undefined}
+    >
+      <MCPProvider>
+        <SidebarProvider defaultOpen={sidebarOpen} open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          {children}
+          <Toaster position="top-center" richColors />
+        </SidebarProvider>
+      </MCPProvider>
+    </ThemeProvider>
+  );
+}
+
+export function Providers({ children }: { children: ReactNode }) {
+  return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme={defaultTheme}
-        enableSystem={true}
-        disableTransitionOnChange
-        themes={availableThemes}
-        forcedTheme={themeParam && availableThemes.includes(themeParam) ? themeParam : undefined}
-      >
-        <MCPProvider>
-          <SidebarProvider defaultOpen={sidebarOpen} open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            {children}
-            <Toaster position="top-center" richColors />
-          </SidebarProvider>
-        </MCPProvider>
-      </ThemeProvider>
+      <Suspense fallback={<div>Loading...</div>}>
+        <ThemeWrapper>{children}</ThemeWrapper>
+      </Suspense>
     </QueryClientProvider>
   );
 } 
