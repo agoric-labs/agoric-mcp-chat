@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "sonner";
@@ -24,15 +25,25 @@ export function Providers({ children }: { children: ReactNode }) {
     STORAGE_KEYS.SIDEBAR_STATE,
     false
   );
+  
+  const searchParams = useSearchParams();
+  const themeParam = decodeURIComponent(searchParams.get("theme") || '');
+  
+  // Available themes
+  const availableThemes = ["light", "dark", "sunset", "black", "dark-blue"];
+  
+  // Use theme from query param if valid, otherwise default to dark-blue
+  const defaultTheme = themeParam && availableThemes.includes(themeParam) ? themeParam : "dark-blue";
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
         attribute="class"
-        defaultTheme="system"
+        defaultTheme={defaultTheme}
         enableSystem={true}
         disableTransitionOnChange
-        themes={["light", "dark", "sunset", "black"]}
+        themes={availableThemes}
+        forcedTheme={themeParam && availableThemes.includes(themeParam) ? themeParam : undefined}
       >
         <MCPProvider>
           <SidebarProvider defaultOpen={sidebarOpen} open={sidebarOpen} onOpenChange={setSidebarOpen}>

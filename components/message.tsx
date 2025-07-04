@@ -3,6 +3,7 @@
 import type { Message as TMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import equal from "fast-deep-equal";
 import { Markdown } from "./markdown";
 import { cn } from "@/lib/utils";
@@ -141,6 +142,9 @@ const PurePreviewMessage = ({
   status: "error" | "submitted" | "streaming" | "ready";
   isLatestMessage: boolean;
 }) => {
+  const searchParams = useSearchParams();
+  const hideTools = searchParams.get("hideTools") === "true";
+  const hideReasoning = searchParams.get("hideReasoning") === "true";
   // Create a string with all text parts for copy functionality
   const getMessageText = () => {
     if (!message.parts) return "";
@@ -198,6 +202,8 @@ const PurePreviewMessage = ({
                     </motion.div>
                   );
                 case "tool-invocation":
+                  if (hideTools) return null;
+                  
                   const { toolName, state, args } = part.toolInvocation;
                   const result = 'result' in part.toolInvocation ? part.toolInvocation.result : null;
                   
@@ -213,6 +219,8 @@ const PurePreviewMessage = ({
                     />
                   );
                 case "reasoning":
+                  if (hideReasoning) return null;
+                  
                   return (
                     <ReasoningMessagePart
                       key={`message-${message.id}-${i}`}
