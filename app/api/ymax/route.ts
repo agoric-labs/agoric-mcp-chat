@@ -12,6 +12,7 @@ interface YMaxRequestBody {
     inFlightTxns: any;
     history: any;
     apyTvlHistory: any;
+    specificPoolInfo: any;
   };
 }
 
@@ -95,6 +96,9 @@ export async function POST(req: Request) {
     
     ### Transaction History
     ${JSON.stringify(context.history, null, 2)}
+
+    ### Chain and Token based Pool Info
+    ${JSON.stringify(context.specificPoolInfo, null, 2)}
     
     ### APY and TVL History
     ${JSON.stringify(context.apyTvlHistory, null, 2)}
