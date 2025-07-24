@@ -1,4 +1,5 @@
 import { model } from "@/ai/providers";
+import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from "ai";
 
 export const maxDuration = 120;
@@ -14,9 +15,20 @@ interface YMaxRequestBody {
   };
 }
 
+interface OptimizationItem {
+  name: string;
+  description: string;
+  details?: string;
+  yield_estimates: string;
+  newAllocationTargets: Array<{
+    pool: string;
+    percentage: number;
+  }>;
+}
+
 interface YMaxResponse {
-  opportunities: string[];
-  optimizations: string[];
+  opportunities: OptimizationItem[];
+  optimizations: OptimizationItem[];
 }
 
 export async function POST(req: Request) {
@@ -91,70 +103,142 @@ export async function POST(req: Request) {
     Based on this context and the user's prompt, provide specific recommendations in two categories:
     1. **Opportunities**: New investment or yield opportunities the user should consider
     2. **Optimizations**: Ways to improve their current portfolio allocation or reduce risks
+    
+    The response should strictly be in the following format:
 
-    Respond with concrete, actionable recommendations based on the provided data.`;
+    {
+      opportunities: [list at-most opportunities]
+      optimizations: [list at-most on current allocations]
+    }
+      and a single optimization is structured as:
+    optimization: {
+      name: string
+      description: string
+      details: string // optional field to show when user needs details
+      yield_estimates: [$ improvement]
+      newAllocationTargets: [
+        {
+          pool: 
+          percentage:
+        }
+
+      ]
+    }
+
+    Respond with concrete, actionable recommendations based on the provided data.
+    Respond with JSON only - output inside triple backticks. Do not include any preamble, postscript, commentary or explanation. 
+
+    `;
 
     // Use Claude-3-7-Sonnet as it's the closest to Claude-4 available
     const result = await generateText({
-      model: model.languageModel("claude-3-7-sonnet"),
+      model: anthropic("claude-4-sonnet-20250514"),
       system: systemPrompt,
       prompt: userPrompt,
-      maxTokens: 2000,
+      maxTokens: 20000,
     });
 
     // Store LLM response
     const llmResponse = result.text;
 
-    // Parse response into opportunities and optimizations
-    // This is a simple parsing approach - can be enhanced based on actual response format
+    // Parse the structured JSON response
     const response: YMaxResponse = {
       opportunities: [],
       optimizations: []
     };
 
-    // Try to extract opportunities and optimizations from the response
-    const lines = llmResponse.split('\n');
-    let currentSection = '';
-    
-    for (const line of lines) {
-      const trimmedLine = line.trim();
+    try {
+      // Try to extract JSON from the response
+      // Look for JSON blocks that might be wrapped in markdown code blocks
+      let jsonText = llmResponse.trim();
       
-      if (trimmedLine.toLowerCase().includes('opportunities') || 
-          trimmedLine.toLowerCase().includes('opportunity')) {
-        currentSection = 'opportunities';
-        continue;
+      // Remove markdown code block markers if present
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
       
-      if (trimmedLine.toLowerCase().includes('optimizations') || 
-          trimmedLine.toLowerCase().includes('optimization')) {
-        currentSection = 'optimizations';
-        continue;
+      // Try to find JSON object in the response
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[0];
       }
       
-      // Extract bullet points or numbered items
-      if ((trimmedLine.startsWith('- ') || 
-           trimmedLine.startsWith('* ') || 
-           /^\d+\./.test(trimmedLine)) && 
-          trimmedLine.length > 3) {
+      // Parse the JSON response
+      const parsedResponse = JSON.parse(jsonText);
+      
+      // Validate and extract opportunities and optimizations
+      if (parsedResponse.opportunities && Array.isArray(parsedResponse.opportunities)) {
+        response.opportunities = parsedResponse.opportunities;
+      }
+      
+      if (parsedResponse.optimizations && Array.isArray(parsedResponse.optimizations)) {
+        response.optimizations = parsedResponse.optimizations;
+      }
+      
+    } catch (parseError) {
+      console.error("Failed to parse LLM JSON response:", parseError);
+      console.log("Raw LLM response:", llmResponse);
+      
+      // Fallback: try to extract structured data from text format
+      const lines = llmResponse.split('\n');
+      let currentSection = '';
+      let currentItem: Partial<OptimizationItem> = {};
+      
+      for (const line of lines) {
+        const trimmedLine = line.trim();
         
-        const content = trimmedLine.replace(/^[-*\d.]\s*/, '').trim();
+        if (trimmedLine.toLowerCase().includes('opportunities:')) {
+          currentSection = 'opportunities';
+          continue;
+        }
         
-        if (currentSection === 'opportunities' && content) {
-          response.opportunities.push(content);
-        } else if (currentSection === 'optimizations' && content) {
-          response.optimizations.push(content);
+        if (trimmedLine.toLowerCase().includes('optimizations:')) {
+          currentSection = 'optimizations';
+          continue;
+        }
+        
+        // Try to extract structured fields
+        if (trimmedLine.startsWith('name:')) {
+          if (Object.keys(currentItem).length > 0) {
+            // Save previous item
+            const item = currentItem as OptimizationItem;
+            if (currentSection === 'opportunities') {
+              response.opportunities.push(item);
+            } else if (currentSection === 'optimizations') {
+              response.optimizations.push(item);
+            }
+          }
+          currentItem = { name: trimmedLine.replace('name:', '').trim() };
+        } else if (trimmedLine.startsWith('description:')) {
+          currentItem.description = trimmedLine.replace('description:', '').trim();
+        } else if (trimmedLine.startsWith('details:')) {
+          currentItem.details = trimmedLine.replace('details:', '').trim();
+        } else if (trimmedLine.startsWith('yield_estimates:')) {
+          currentItem.yield_estimates = trimmedLine.replace('yield_estimates:', '').trim();
         }
       }
-    }
-    
-    // If no structured format found, try to split the response roughly
-    if (response.opportunities.length === 0 && response.optimizations.length === 0) {
-      const sentences = llmResponse.split(/[.!?]+/).filter(s => s.trim().length > 10);
       
-      // Simple heuristic: first half as opportunities, second half as optimizations
-      const mid = Math.ceil(sentences.length / 2);
-      response.opportunities = sentences.slice(0, mid).map(s => s.trim());
-      response.optimizations = sentences.slice(mid).map(s => s.trim());
+      // Save last item
+      if (Object.keys(currentItem).length > 0) {
+        const item = currentItem as OptimizationItem;
+        if (currentSection === 'opportunities') {
+          response.opportunities.push(item);
+        } else if (currentSection === 'optimizations') {
+          response.optimizations.push(item);
+        }
+      }
+      
+      // If still no results, create basic fallback
+      if (response.opportunities.length === 0 && response.optimizations.length === 0) {
+        response.opportunities.push({
+          name: "Portfolio Analysis",
+          description: "Could not parse structured response. Please check the LLM output format.",
+          yield_estimates: "N/A",
+          newAllocationTargets: []
+        });
+      }
     }
 
     return new Response(
