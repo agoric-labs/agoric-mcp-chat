@@ -1,6 +1,7 @@
 import { model } from "@/ai/providers";
 import { anthropic } from '@ai-sdk/anthropic';
-import { generateText } from "ai";
+import { google, GoogleGenerativeAIProviderOptions } from '@ai-sdk/google';
+import { generateText, streamText } from "ai";
 
 export const maxDuration = 120;
 
@@ -14,6 +15,7 @@ const corsHeaders = {
 
 interface YMaxRequestBody {
   userPrompt: string;
+  model?: 'anthropic' | 'google';
   context: {
     balances: any;
     targetAllocation: any;
@@ -52,6 +54,7 @@ export async function POST(req: Request) {
   try {
     const {
       userPrompt,
+      model = 'anthropic',
       context
     }: YMaxRequestBody = await req.json();
 
@@ -107,21 +110,6 @@ export async function POST(req: Request) {
 
     Today's date is ${new Date().toISOString().split('T')[0]}.
 
-    ## Context Information
-    You have been provided with the following context about the user's portfolio:
-    
-    ### Balances
-    ${JSON.stringify(context.balances, null, 2)}
-    
-    ### Target Allocation
-    ${JSON.stringify(context.targetAllocation, null, 2)}
-    
-    ### In-Flight Transactions
-    ${JSON.stringify(context.inFlightTxns, null, 2)}
-    
-    ### Transaction History
-    ${JSON.stringify(context.history, null, 2)}
-
     ### Chain and Token based Pool Info
     ${JSON.stringify(context.specificPoolInfo, null, 2)}
     
@@ -130,7 +118,7 @@ export async function POST(req: Request) {
 
     ## Analysis Instructions:
     
-    Based on the portfolio context and user prompt, analyze and provide recommendations in two categories:
+    Based on the portfolio context provided in the user's message and the market data above, analyze and provide recommendations in two categories:
 
     ### Opportunities (New yield strategies to consider):
     - Cross-chain yield farming with higher APYs
@@ -191,14 +179,51 @@ export async function POST(req: Request) {
 
     `;
 
-    // Use Claude-3-7-Sonnet as it's the closest to Claude-4 available
-    const result = await generateText({
-      model: anthropic("claude-4-sonnet-20250514"),
-      system: systemPrompt,
-      prompt: userPrompt,
-      maxTokens: 5000,
-      reasoning: false,
-    });
+    // Construct enhanced user prompt with portfolio context
+    const enhancedUserPrompt = `${userPrompt}
+
+    ## Portfolio Context Information:
+
+    ### Current Balances
+    ${JSON.stringify(context.balances, null, 2)}
+
+    ### Target Allocation
+    ${JSON.stringify(context.targetAllocation, null, 2)}
+
+    ### In-Flight Transactions
+    ${JSON.stringify(context.inFlightTxns, null, 2)}
+
+    ### Transaction History
+    ${JSON.stringify(context.history, null, 2)}
+
+    Please analyze the above portfolio information along with the market data provided in the system context to generate optimization recommendations.`;
+
+    // Dynamic model selection based on request parameter
+    let result;
+    if (model === 'google') {
+      result = await generateText({
+        model: google('gemini-2.5-flash'),
+        system: systemPrompt,
+        prompt: enhancedUserPrompt,
+        maxTokens: 12000,
+        providerOptions: {
+          google: {
+            thinkingConfig: {
+              thinkingBudget: 128,
+            },
+          } satisfies GoogleGenerativeAIProviderOptions,
+        },
+      });
+    } else {
+      // Default to Anthropic
+      result = await generateText({
+        model: anthropic("claude-4-sonnet-20250514"),
+        system: systemPrompt,
+        prompt: enhancedUserPrompt,
+        maxTokens: 5000,
+        reasoning: false,
+      });
+    }
 
     // Store LLM response
     const llmResponse = result.text;

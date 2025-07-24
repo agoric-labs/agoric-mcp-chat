@@ -158,6 +158,7 @@ async function fetchHistoricalData(poolInfoByChain) {
 function createTestRequest(poolInfo, historicalData) {
   return {
     userPrompt: "Please analyze my portfolio and provide optimization recommendations. I'm looking to maximize yield while managing risk appropriately.",
+    model: "google",
     context: {
       // Sample balances showing current portfolio state
       balances: {
@@ -235,7 +236,7 @@ async function main() {
     // Call ymax API
     const results = await callYmaxAPI(requestData);
     
-    console.log(results);
+    console.log(JSON.stringify(results, null, 2));
     
     console.log('\n🎉 Multi-chain test completed successfully!');
     
