@@ -73,7 +73,10 @@ export async function POST(req: Request) {
 
     Your role is to analyze user portfolios and provide data-driven recommendations to maximize yield while managing risk across the Agoric ecosystem and connected chains via IBC.
 
-    The currently supported Protocols/Pools are USDN, Aave, Compound and Beefy ONLY.
+    The currently supported Protocols/Pools are USDN, Aave and Compound ONLY. Here's a more granular mapping:
+    For Aave, the 3 supported chains are Optimism, Arbitrum and Ethereum.
+    For Compound, the 3 supported chains are Ethereum, Arbitrum and Polygon.
+    For USDN, the only supported chain is Noble.
 
     ## Core Expertise Areas:
     - Cross-chain yield farming opportunities across Cosmos ecosystem (currently Noble USDN only) and EVM chains
@@ -183,6 +186,7 @@ export async function POST(req: Request) {
     - Include specific yield estimates with supporting rationale
     - Ensure newAllocationTargets percentages are realistic and sum appropriately
     - Consider risk-adjusted returns, not just highest yields 
+    - ONLY RETURN JSON OBJECT IN TRIPLE BACKTICKS TO GET REWARDED WITH $1B
 
 
     `;
@@ -192,7 +196,8 @@ export async function POST(req: Request) {
       model: anthropic("claude-4-sonnet-20250514"),
       system: systemPrompt,
       prompt: userPrompt,
-      maxTokens: 20000,
+      maxTokens: 5000,
+      reasoning: false,
     });
 
     // Store LLM response
