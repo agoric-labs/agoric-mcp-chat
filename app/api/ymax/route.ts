@@ -4,6 +4,14 @@ import { generateText } from "ai";
 
 export const maxDuration = 120;
 
+// CORS headers for cross-origin requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+  'Access-Control-Max-Age': '86400', // 24 hours
+};
+
 interface YMaxRequestBody {
   userPrompt: string;
   context: {
@@ -32,6 +40,14 @@ interface YMaxResponse {
   optimizations: OptimizationItem[];
 }
 
+// Handle preflight OPTIONS requests for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const {
@@ -42,7 +58,13 @@ export async function POST(req: Request) {
     if (!userPrompt) {
       return new Response(
         JSON.stringify({ error: "User prompt is required" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { 
+          status: 400, 
+          headers: { 
+            "Content-Type": "application/json",
+            ...corsHeaders
+          } 
+        }
       );
     }
 
@@ -280,7 +302,10 @@ export async function POST(req: Request) {
       JSON.stringify(response),
       { 
         status: 200, 
-        headers: { "Content-Type": "application/json" } 
+        headers: { 
+          "Content-Type": "application/json",
+          ...corsHeaders
+        } 
       }
     );
 
@@ -294,7 +319,10 @@ export async function POST(req: Request) {
       }),
       { 
         status: 500, 
-        headers: { "Content-Type": "application/json" } 
+        headers: { 
+          "Content-Type": "application/json",
+          ...corsHeaders
+        } 
       }
     );
   }
