@@ -42,6 +42,7 @@ function ChatContent() {
   const [selectedModel, setSelectedModel] = useLocalStorage<modelID>("selectedModel", defaultModel);
   const [userId, setUserId] = useState<string>('');
   const [generatedChatId, setGeneratedChatId] = useState<string>('');
+  const [inoMode, setInoMode] = useLocalStorage<boolean>("inoMode", false);
   
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
@@ -105,7 +106,12 @@ function ChatContent() {
           { position: "top-center", richColors: true },
         );
       },
-      api: contextParam ? `/api/chat?context=${contextParam}` : '/api/chat'
+      api: (() => {
+        const params = new URLSearchParams();
+        if (contextParam) params.set('context', contextParam);
+        if (inoMode) params.set('ino', 'true');
+        return params.toString() ? `/api/chat?${params.toString()}` : '/api/chat';
+      })()
     });
     
   // Define loading state early so it can be used in effects
@@ -191,6 +197,8 @@ function ChatContent() {
               isLoading={isLoading}
               status={status}
               stop={stop}
+              inoMode={inoMode}
+              setInoMode={setInoMode}
             />
           </form>
           {/* Only show carousel when no messages exist */}
@@ -213,6 +221,8 @@ function ChatContent() {
               isLoading={isLoading}
               status={status}
               stop={stop}
+              inoMode={inoMode}
+              setInoMode={setInoMode}
             />
           </form>
         </>

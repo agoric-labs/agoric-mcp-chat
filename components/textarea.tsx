@@ -3,6 +3,8 @@ import { Textarea as ShadcnTextarea } from "@/components/ui/textarea";
 import { ArrowUp, Loader2, Code2Icon } from "lucide-react";
 import { ModelPicker } from "./model-picker";
 import { useEffect, useState } from "react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface InputProps {
   input: string;
@@ -12,6 +14,8 @@ interface InputProps {
   stop: () => void;
   selectedModel: modelID;
   setSelectedModel: (model: modelID) => void;
+  inoMode?: boolean;
+  setInoMode?: (enabled: boolean) => void;
 }
 
 export const Textarea = ({
@@ -22,6 +26,8 @@ export const Textarea = ({
   stop,
   selectedModel,
   setSelectedModel,
+  inoMode = false,
+  setInoMode,
 }: InputProps) => {
   const isStreaming = status === "streaming" || status === "submitted";
   const [showEditor, setShowEditor] = useState(false);
@@ -96,7 +102,21 @@ export const Textarea = ({
   };
   
   return (
-    <div className="relative w-full">      
+    <div className="relative w-full">
+      {/* INO Toggle */}
+      {setInoMode && (
+        <div className="flex items-center space-x-2 mb-2">
+          <Switch
+            id="ino-mode"
+            checked={inoMode}
+            onCheckedChange={setInoMode}
+          />
+          <Label htmlFor="ino-mode" className="text-sm font-medium">
+            INO
+          </Label>
+        </div>
+      )}
+      
       <ShadcnTextarea
         className="bg-background/50 dark:bg-muted/50 backdrop-blur-sm w-full rounded-2xl pr-10 xs:pr-12 pt-3 xs:pt-4 pb-12 xs:pb-16 border-input focus-visible:ring-ring placeholder:text-muted-foreground min-h-10 xs:min-h-12 max-h-16 xs:max-h-20 sm:max-h-24 md:max-h-32"
         value={input}
