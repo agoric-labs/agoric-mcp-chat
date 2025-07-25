@@ -219,7 +219,6 @@ export async function POST(req: Request) {
         system: systemPrompt,
         prompt: enhancedUserPrompt,
         maxTokens: 5000,
-        reasoning: false,
       });
     }
 
