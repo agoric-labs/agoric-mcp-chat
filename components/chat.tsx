@@ -79,7 +79,10 @@ function ChatContent() {
     }
   }, [chatId]);
   
-  
+  const newParams = new URLSearchParams(window.location.search);
+  if (contextParam) newParams.set('context', contextParam);
+  if (inoMode) newParams.set('ino', 'true');
+  const apiUrl = newParams.toString() ? `/api/chat?${newParams.toString()}` : '/api/chat';
 
   const { messages, input, handleInputChange, handleSubmit, status, stop } =
     useChat({
@@ -106,12 +109,7 @@ function ChatContent() {
           { position: "top-center", richColors: true },
         );
       },
-      api: (() => {
-        const params = new URLSearchParams();
-        if (contextParam) params.set('context', contextParam);
-        if (inoMode) params.set('ino', 'true');
-        return params.toString() ? `/api/chat?${params.toString()}` : '/api/chat';
-      })()
+      api: apiUrl
     });
     
   // Define loading state early so it can be used in effects
