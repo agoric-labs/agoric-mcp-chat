@@ -1,9 +1,8 @@
-import { model } from "@/ai/providers";
 import { anthropic } from '@ai-sdk/anthropic';
-import { google, GoogleGenerativeAIProviderOptions } from '@ai-sdk/google';
-import { generateText, streamText } from "ai";
+import { google } from '@ai-sdk/google';
+import { openai } from '@ai-sdk/openai';
+import { generateText } from "ai";
 
-export const maxDuration = 120;
 
 // CORS headers for cross-origin requests
 const corsHeaders = {
@@ -15,7 +14,7 @@ const corsHeaders = {
 
 interface YMaxRequestBody {
   userPrompt: string;
-  model?: 'anthropic' | 'google';
+  model?: 'anthropic' | 'google' | 'openai';
   context: {
     balances: any;
     targetAllocation: any;
@@ -202,17 +201,16 @@ export async function POST(req: Request) {
     let result;
     if (model === 'google') {
       result = await generateText({
-        model: google('gemini-2.5-flash'),
+        model: google('gemini-2.0-flash'),
         system: systemPrompt,
         prompt: enhancedUserPrompt,
-        maxTokens: 12000,
-        providerOptions: {
-          google: {
-            thinkingConfig: {
-              thinkingBudget: 128,
-            },
-          } satisfies GoogleGenerativeAIProviderOptions,
-        },
+        maxTokens: 5000,
+      });
+    } else if (model === 'openai') {
+      result = await generateText({
+        model: openai('gpt-3.5-turbo'),
+        system: systemPrompt,
+        prompt: enhancedUserPrompt
       });
     } else {
       // Default to Anthropic
