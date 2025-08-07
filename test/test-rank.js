@@ -1,13 +1,22 @@
-const ALPHA = 2 / 31; // ≈ 0.0645 for 30-day EMA
+const ALPHA = 0.04; // Lambda parameter: 96% previous data, 4% current data
 
-// Function to compute EMA from an array of values (assumes data is sorted chronologically)
+// Function to compute EWMA from an array of values (assumes data is sorted chronologically, most recent last)
 function computeEMA(values) {
   if (values.length === 0) return 0;
-  let ema = values[0];
-  for (let i = 1; i < values.length; i++) {
-    ema = ALPHA * values[i] + (1 - ALPHA) * ema;
+  if (values.length === 1) return values[0];
+  
+  let weightedSum = 0;
+  let totalWeight = 0;
+  
+  // Apply exponentially decreasing weights, with most recent data getting highest weight
+  for (let i = 0; i < values.length; i++) {
+    const ageFromMostRecent = values.length - 1 - i; // 0 for most recent, increases for older data
+    const weight = ALPHA * Math.pow(1 - ALPHA, ageFromMostRecent);
+    weightedSum += values[i] * weight;
+    totalWeight += weight;
   }
-  return ema;
+  
+  return weightedSum / totalWeight;
 }
 
 // Fetch pool data using Agoric APY worker
