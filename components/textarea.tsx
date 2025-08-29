@@ -5,6 +5,7 @@ import { ModelPicker } from "./model-picker";
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useSearchParams } from "next/navigation";
 
 interface InputProps {
   input: string;
@@ -32,6 +33,8 @@ export const Textarea = ({
   const isStreaming = status === "streaming" || status === "submitted";
   const [showEditor, setShowEditor] = useState(false);
   const [editorLanguage, setEditorLanguage] = useState("javascript");
+  const searchParams = useSearchParams();
+  const hideINO = decodeURIComponent(searchParams.get("hideINO") || 'false') === 'true';
   
   // Check if input contains the word "code"
   useEffect(() => {
@@ -101,10 +104,11 @@ export const Textarea = ({
     setShowEditor(!showEditor);
   };
   
+  
   return (
     <div className="relative w-full">
       {/* INO Toggle */}
-      {setInoMode && (
+      {setInoMode && !hideINO && (
         <div className="flex items-center space-x-2 mb-2">
           <Switch
             id="ino-mode"
