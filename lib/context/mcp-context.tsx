@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useLocalStorage } from "@/lib/hooks/use-local-storage";
 import { STORAGE_KEYS } from "@/lib/constants";
+import { useSearchParams } from "next/navigation";
 
 // Define types for MCP server
 export interface KeyValuePair {
@@ -52,6 +53,12 @@ const DEFAULT_MCP_SERVER: MCPServer = {
 
 export function MCPProvider(props: { children: React.ReactNode }) {
   const { children } = props;
+  const searchParams = useSearchParams();
+  const useAgoricWebsiteMCP = decodeURIComponent(searchParams.get("useAgoricWebsiteMCP") || '').toLowerCase() === 'true';
+
+  if (useAgoricWebsiteMCP) {
+    DEFAULT_MCP_SERVER.url = "https://agoric-mcp-devops-server.agoric-core.workers.dev/sse";
+  }
   const [_mcpServers, setMcpServers] = useLocalStorage<MCPServer[]>(
     STORAGE_KEYS.MCP_SERVERS,
     [DEFAULT_MCP_SERVER]
