@@ -82,7 +82,11 @@ function ChatContent() {
   const newParams = new URLSearchParams(window.location.search);
   if (contextParam) newParams.set('context', contextParam);
   if (inoMode) newParams.set('ino', 'true');
-  const apiUrl = newParams.toString() ? `/api/chat?${newParams.toString()}` : '/api/chat';
+  
+  // Check if useAgoricWebsiteMCP param is present to determine which API to use
+  const useAgoricWebsiteMCP = searchParams.get('useAgoricWebsiteMCP');
+  const apiBase = useAgoricWebsiteMCP ? '/api/support' : '/api/chat';
+  const apiUrl = newParams.toString() ? `${apiBase}?${newParams.toString()}` : apiBase;
 
   const { messages, input, handleInputChange, handleSubmit, status, stop } =
     useChat({
