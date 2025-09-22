@@ -48,20 +48,24 @@ const DEFAULT_MCP_SERVER: MCPServer = {
   id: DEFAULT_MCP_SERVER_ID,
   name: "Agoric MCP Server",
   type: "sse",
-  url: "https://agoric-mcp-server.agoric-core.workers.dev/sse",
+  url: "https://ymax-mcp-server.agoric-core.workers.dev/sse",
 };
 
 export function MCPProvider(props: { children: React.ReactNode }) {
   const { children } = props;
   const searchParams = useSearchParams();
-  const useAgoricWebsiteMCP = decodeURIComponent(searchParams.get("useAgoricWebsiteMCP") || '').toLowerCase() === 'true';
+  const useAgoricWebsiteMCP =
+    decodeURIComponent(
+      searchParams.get("useAgoricWebsiteMCP") || "",
+    ).toLowerCase() === "true";
 
   if (useAgoricWebsiteMCP) {
-    DEFAULT_MCP_SERVER.url = "https://agoric-mcp-devops-server.agoric-core.workers.dev/sse";
+    DEFAULT_MCP_SERVER.url =
+      "https://agoric-mcp-devops-server.agoric-core.workers.dev/sse";
   }
   const [_mcpServers, setMcpServers] = useLocalStorage<MCPServer[]>(
     STORAGE_KEYS.MCP_SERVERS,
-    [DEFAULT_MCP_SERVER]
+    [DEFAULT_MCP_SERVER],
   );
   const [_selectedMcpServers, setSelectedMcpServers] = useLocalStorage<
     string[]
@@ -72,7 +76,7 @@ export function MCPProvider(props: { children: React.ReactNode }) {
     ? [DEFAULT_MCP_SERVER, ..._mcpServers]
     : _mcpServers;
   const selectedMcpServers = !_selectedMcpServers.find(
-    (id) => id === DEFAULT_MCP_SERVER_ID
+    (id) => id === DEFAULT_MCP_SERVER_ID,
   )
     ? [DEFAULT_MCP_SERVER_ID, ..._selectedMcpServers]
     : _selectedMcpServers;
@@ -107,14 +111,14 @@ export function MCPProvider(props: { children: React.ReactNode }) {
           setMcpServers(
             !servers.find(({ id }) => id === DEFAULT_MCP_SERVER_ID)
               ? [DEFAULT_MCP_SERVER, ...servers]
-              : servers
+              : servers,
           ),
         selectedMcpServers,
         setSelectedMcpServers: (serverIds) =>
           setSelectedMcpServers(
             !serverIds.find((id) => id === DEFAULT_MCP_SERVER_ID)
               ? [DEFAULT_MCP_SERVER_ID, ...serverIds]
-              : serverIds
+              : serverIds,
           ),
         mcpServersForApi,
       }}
