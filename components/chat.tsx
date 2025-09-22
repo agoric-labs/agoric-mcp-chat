@@ -42,7 +42,6 @@ function ChatContent() {
   const [selectedModel, setSelectedModel] = useLocalStorage<modelID>("selectedModel", defaultModel);
   const [userId, setUserId] = useState<string>('');
   const [generatedChatId, setGeneratedChatId] = useState<string>('');
-  const [inoMode, setInoMode] = useLocalStorage<boolean>("inoMode", false);
   
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
@@ -81,7 +80,6 @@ function ChatContent() {
   
   const newParams = new URLSearchParams(window.location.search);
   if (contextParam) newParams.set('context', contextParam);
-  if (inoMode) newParams.set('ino', 'true');
   
   // Check if useAgoricWebsiteMCP param is present to determine which API to use
   const useAgoricWebsiteMCP = searchParams.get('useAgoricWebsiteMCP');
@@ -199,8 +197,6 @@ function ChatContent() {
               isLoading={isLoading}
               status={status}
               stop={stop}
-              inoMode={inoMode}
-              setInoMode={setInoMode}
             />
           </form>
           {/* Only show carousel when no messages exist */}
@@ -223,8 +219,6 @@ function ChatContent() {
               isLoading={isLoading}
               status={status}
               stop={stop}
-              inoMode={inoMode}
-              setInoMode={setInoMode}
             />
           </form>
         </>
