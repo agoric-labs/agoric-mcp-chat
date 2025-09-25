@@ -12,6 +12,7 @@ interface InputProps {
   stop: () => void;
   selectedModel: modelID;
   setSelectedModel: (model: modelID) => void;
+  autoFocus?: boolean
 }
 
 export const Textarea = ({
@@ -22,6 +23,7 @@ export const Textarea = ({
   stop,
   selectedModel,
   setSelectedModel,
+  autoFocus = true,
 }: InputProps) => {
   const isStreaming = status === "streaming" || status === "submitted";
   const [showEditor, setShowEditor] = useState(false);
@@ -102,7 +104,7 @@ export const Textarea = ({
       <ShadcnTextarea
         className="bg-background/50 dark:bg-muted/50 backdrop-blur-sm w-full rounded-2xl pr-10 xs:pr-12 pt-3 xs:pt-4 pb-12 xs:pb-16 border-input focus-visible:ring-ring placeholder:text-muted-foreground min-h-10 xs:min-h-12 max-h-16 xs:max-h-20 sm:max-h-24 md:max-h-32"
         value={input}
-        autoFocus
+        autoFocus={autoFocus}
         placeholder="Send a message..."
         onChange={handleInputChange}
         onKeyDown={(e) => {
