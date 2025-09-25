@@ -141,6 +141,31 @@ function ChatContent() {
     
   // Track previous submission to prevent loops
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
+
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      // Optionally check e.origin === "https://your-dashboard.example"
+      // if (e.data?.type === "ORBIT_CHAT/DASHBOARD_STATE") {
+      //   // Store e.data.payload into your chat side state if useful
+      // }
+      if (e.data?.type === "ORBIT_CHAT/SET_AND_SUBMIT") {
+        const text = e.data?.payload?.input ?? "";
+
+        console.log("CHAT: Received context message from parent window:", text);
+        if (!text) return;
+
+        // Use your existing handlers:
+        handleInputChange({ target: { value: text } } as React.ChangeEvent<HTMLTextAreaElement>);
+        queueMicrotask(() => {
+          // if you have a form ref, requestSubmit(); otherwise call your submit handler:
+          const evt = { preventDefault() { } } as React.FormEvent<HTMLFormElement>;
+          handleSubmit(evt);
+        });
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
   
   // Listen for submitted code and send it to the chat
   useEffect(() => {
