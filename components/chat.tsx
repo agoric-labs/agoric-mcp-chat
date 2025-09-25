@@ -146,7 +146,6 @@ function ChatContent() {
     function onMessage(e: MessageEvent) {
       // Optionally check e.origin === "https://your-dashboard.example"
       // if (e.data?.type === "ORBIT_CHAT/DASHBOARD_STATE") {
-      //   // Store e.data.payload into your chat side state if useful
       // }
       if (e.data?.type === "ORBIT_CHAT/SET_AND_SUBMIT") {
         const text = e.data?.payload?.input ?? "";
