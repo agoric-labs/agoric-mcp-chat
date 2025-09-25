@@ -148,8 +148,72 @@ export default function Chat() {
       handleSubmit(e);
     }
   }, [chatId, generatedChatId, input, handleSubmit, router]);
+    
+  // Track previous submission to prevent loops
+  const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
+  
+  // Listen for submitted code and send it to the chat
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      // Optionally check e.origin === "https://your-dashboard.example"
+      // if (e.data?.type === "ORBIT_CHAT/DASHBOARD_STATE") {
+      //   // Store e.data.payload into your chat side state if useful
+      // }
+      if (e.data?.type === "ORBIT_CHAT/SET_AND_SUBMIT") {
+        const text = e.data?.payload?.input ?? "";
 
-  const isLoading = status === "streaming" || status === "submitted" || isLoadingChat;
+        console.log("CHAT: Received code submission from parent window:", text);
+        if (!text) return;
+
+        // Use your existing handlers:
+        handleInputChange({ target: { value: text } } as React.ChangeEvent<HTMLTextAreaElement>);
+        queueMicrotask(() => {
+          // if you have a form ref, requestSubmit(); otherwise call your submit handler:
+          const evt = { preventDefault() { } } as React.FormEvent<HTMLFormElement>;
+          handleSubmit(evt);
+        });
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+  
+  useEffect(() => {
+    console.log("CHAT: submittedCode changed:", submittedCode, "key:", submissionKey, "lastKey:", lastSubmittedKey);
+    
+    // Only proceed if:
+    // 1. There's submitted code
+    // 2. Valid submission key that's different from the last one we processed
+    // 3. Not already loading
+    if (submittedCode && submissionKey > 0 && submissionKey !== lastSubmittedKey && !isLoading) {
+      console.log("CHAT: Preparing to submit code to chat, key changed:", submissionKey, "from:", lastSubmittedKey);
+      
+      // Update last submitted key to prevent reprocessing
+      setLastSubmittedKey(submissionKey);
+      
+      // Set the input value to the submitted code
+      const inputEvent = {
+        target: { value: submittedCode },
+      } as React.ChangeEvent<HTMLTextAreaElement>;
+      
+      console.log("CHAT: Setting input value:", submittedCode);
+      handleInputChange(inputEvent);
+      
+      // Use a timeout to ensure the input is set before submitting
+      setTimeout(() => {
+        // Create a synthetic form event
+        const formEvent = {
+          preventDefault: () => {},
+        } as React.FormEvent<HTMLFormElement>;
+        
+        console.log("CHAT: Submitting form with handleFormSubmit");
+        handleFormSubmit(formEvent);
+        
+        // Clear the submitted code to prevent resubmission
+        clearSubmittedCode();
+      }, 100);
+    }
+  }, [submittedCode, submissionKey, lastSubmittedKey, isLoading, handleInputChange, handleFormSubmit, clearSubmittedCode]);
 
   return (
     <div className="h-dvh flex flex-col justify-center w-full max-w-[430px] sm:max-w-3xl mx-auto px-4 sm:px-6 py-3">
