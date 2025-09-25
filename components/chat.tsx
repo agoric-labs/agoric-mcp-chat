@@ -16,7 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Message as DBMessage } from "@/lib/db/schema";
 import { nanoid } from "nanoid";
 import { useMCP } from "@/lib/context/mcp-context";
-import VerticalTextCarousel from "@/components/ui/carousel";
+// import VerticalTextCarousel from "@/components/ui/carousel";
 import { EditorProvider, useEditor } from "@/lib/context/editor-context";
 import { FloatingEditor } from "./floating-editor";
 
@@ -200,7 +200,7 @@ function ChatContent() {
             />
           </form>
           {/* Only show carousel when no messages exist */}
-          <VerticalTextCarousel/>
+          {/* <VerticalTextCarousel/> */}
         </div>
       ) : (
         <>
