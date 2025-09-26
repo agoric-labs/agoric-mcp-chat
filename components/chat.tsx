@@ -2,7 +2,7 @@
 
 import { defaultModel, type modelID } from "@/ai/providers";
 import { Message, useChat } from "@ai-sdk/react";
-import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
 import { Messages } from "./messages";
@@ -36,57 +36,58 @@ function ChatContent() {
   const chatId = params?.id as string | undefined;
   const contextParam = searchParams.get('context');
   const titleParam = searchParams.get('title');
+  const disableAutoFocus = !!searchParams.get('disableAutoFocus');
   const title = titleParam ? decodeURIComponent(titleParam) : 'Agoric AI Chat';
   const queryClient = useQueryClient();
-  
+
   const [selectedModel, setSelectedModel] = useLocalStorage<modelID>("selectedModel", defaultModel);
   const [userId, setUserId] = useState<string>('');
   const [generatedChatId, setGeneratedChatId] = useState<string>('');
-  
+
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
-  
+
   // Get the editor context
   const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } = useEditor();
-  
+
   // Initialize userId
   useEffect(() => {
     setUserId(getUserId());
   }, []);
 
-  
+
   // Add event listener for code submissions
   useEffect(() => {
     const handleCodeSubmission = (event: any) => {
       console.log("Code submission detected in chat:", event.detail);
       // Here you could perform additional actions when code is submitted
     };
-    
+
     // Add event listener
     window.addEventListener('code-submitted', handleCodeSubmission);
-    
+
     // Cleanup
     return () => {
       window.removeEventListener('code-submitted', handleCodeSubmission);
     };
   }, []);
-  
+
   // Generate a chat ID if needed
   useEffect(() => {
     if (!chatId) {
       setGeneratedChatId(nanoid());
     }
   }, [chatId]);
-  
+
   const newParams = new URLSearchParams(window.location.search);
   if (contextParam) newParams.set('context', contextParam);
-  
+
   // Check if useAgoricWebsiteMCP param is present to determine which API to use
   const useAgoricWebsiteMCP = searchParams.get('useAgoricWebsiteMCP');
   const apiBase = useAgoricWebsiteMCP ? '/api/support' : '/api/chat';
   const apiUrl = newParams.toString() ? `${apiBase}?${newParams.toString()}` : apiBase;
 
-  const { messages, input, handleInputChange, handleSubmit, status, stop } =
+  const { messages, input, handleInputChange, handleSubmit, status, stop, append } =
     useChat({
       id: chatId || generatedChatId, // Use generated ID if no chatId in URL
       maxSteps: 20,
@@ -113,21 +114,21 @@ function ChatContent() {
       },
       api: apiUrl
     });
-    
+
   // Define loading state early so it can be used in effects
   const isLoading = status === "streaming" || status === "submitted";
-  
+
   // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); 
-    
+    e.preventDefault();
+
     if (!chatId && generatedChatId && input.trim()) {
       // If this is a new conversation, redirect to the chat page with the generated ID
       const effectiveChatId = generatedChatId;
-      
+
       // Submit the form
       handleSubmit(e);
-      
+
       // Preserve all query parameters in navigation
       const searchParams = new URLSearchParams(window.location.search);
       const queryString = searchParams.toString();
@@ -138,42 +139,58 @@ function ChatContent() {
       handleSubmit(e);
     }
   }, [chatId, generatedChatId, input, handleSubmit, router]);
-    
+
   // Track previous submission to prevent loops
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
-  
+
+  useEffect(() => {
+    async function onMessage(e: MessageEvent) {
+      const data = typeof e.data === 'string' ? (() => { try { return JSON.parse(e.data) } catch { return e.data } })() : e.data;
+
+      if (data?.type === "ORBIT_CHAT/SET_AND_SUBMIT") {
+        const text = data?.payload?.input ?? "";
+        if (text) {
+          await append({ role: "user", content: text } as Message);
+        }
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+
   // Listen for submitted code and send it to the chat
   useEffect(() => {
     console.log("CHAT: submittedCode changed:", submittedCode, "key:", submissionKey, "lastKey:", lastSubmittedKey);
-    
+
     // Only proceed if:
     // 1. There's submitted code
     // 2. Valid submission key that's different from the last one we processed
     // 3. Not already loading
     if (submittedCode && submissionKey > 0 && submissionKey !== lastSubmittedKey && !isLoading) {
       console.log("CHAT: Preparing to submit code to chat, key changed:", submissionKey, "from:", lastSubmittedKey);
-      
+
       // Update last submitted key to prevent reprocessing
       setLastSubmittedKey(submissionKey);
-      
+
       // Set the input value to the submitted code
       const inputEvent = {
         target: { value: submittedCode },
       } as React.ChangeEvent<HTMLTextAreaElement>;
-      
+
       console.log("CHAT: Setting input value:", submittedCode);
       handleInputChange(inputEvent);
-      
+
       // Use a timeout to ensure the input is set before submitting
       setTimeout(() => {
         // Create a synthetic form event
         const formEvent = {
-          preventDefault: () => {},
+          preventDefault: () => { },
         } as React.FormEvent<HTMLFormElement>;
-        
+
         console.log("CHAT: Submitting form with handleFormSubmit");
         handleFormSubmit(formEvent);
-        
+
         // Clear the submitted code to prevent resubmission
         clearSubmittedCode();
       }, 100);
@@ -197,6 +214,7 @@ function ChatContent() {
               isLoading={isLoading}
               status={status}
               stop={stop}
+              autoFocus={!disableAutoFocus}
             />
           </form>
           {/* Only show carousel when no messages exist */}
@@ -219,11 +237,13 @@ function ChatContent() {
               isLoading={isLoading}
               status={status}
               stop={stop}
+              autoFocus={!disableAutoFocus}
+              
             />
           </form>
         </>
       )}
-      
+
       {/* Floating editor for markdown editing */}
       <FloatingEditor />
     </div>
