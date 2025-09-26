@@ -2,7 +2,7 @@
 
 import { defaultModel, type modelID } from "@/ai/providers";
 import { Message, useChat } from "@ai-sdk/react";
-import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
 import { Messages } from "./messages";
@@ -36,13 +36,13 @@ function ChatContent() {
   const chatId = params?.id as string | undefined;
   const contextParam = searchParams.get('context');
   const titleParam = searchParams.get('title');
+  const disableAutoFocus = !!searchParams.get('disableAutoFocus');
   const title = titleParam ? decodeURIComponent(titleParam) : 'Agoric AI Chat';
   const queryClient = useQueryClient();
 
   const [selectedModel, setSelectedModel] = useLocalStorage<modelID>("selectedModel", defaultModel);
   const [userId, setUserId] = useState<string>('');
   const [generatedChatId, setGeneratedChatId] = useState<string>('');
-  const formRef = useRef<HTMLFormElement>(null);
 
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
@@ -149,16 +149,14 @@ function ChatContent() {
 
       if (data?.type === "ORBIT_CHAT/SET_AND_SUBMIT") {
         const text = data?.payload?.input ?? "";
-        console.log("CHAT: Received context message:", text);
         if (text) {
-          // handleInputChange({ target: { value: text } } as React.ChangeEvent<HTMLTextAreaElement>);
           await append({ role: "user", content: text } as Message);
         }
       }
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [handleInputChange]); // no need to depend on handleFormSubmit now
+  }, []);
 
 
   // Listen for submitted code and send it to the chat
@@ -205,7 +203,6 @@ function ChatContent() {
         <div className="max-w-xl mx-auto w-full">
           <ProjectOverview heading={title} />
           <form
-            ref={formRef}
             onSubmit={handleFormSubmit}
             className="mt-4 w-full mx-auto"
           >
@@ -217,7 +214,7 @@ function ChatContent() {
               isLoading={isLoading}
               status={status}
               stop={stop}
-              autoFocus={false}
+              autoFocus={!disableAutoFocus}
             />
           </form>
           {/* Only show carousel when no messages exist */}
@@ -229,7 +226,6 @@ function ChatContent() {
             <Messages messages={messages} isLoading={isLoading} status={status} />
           </div>
           <form
-            ref={formRef}
             onSubmit={handleFormSubmit}
             className="mt-2 w-full mx-auto mb-2 xs:mb-4 sm:mb-auto px-2 xs:px-0"
           >
@@ -241,7 +237,7 @@ function ChatContent() {
               isLoading={isLoading}
               status={status}
               stop={stop}
-              autoFocus={false}
+              autoFocus={!disableAutoFocus}
               
             />
           </form>
