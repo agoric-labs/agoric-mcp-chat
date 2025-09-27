@@ -2,18 +2,24 @@
 
 import { useEffect, useState } from "react";
 
-export function SplashScreen() {
+interface SplashScreenProps {
+  showTimer?: boolean;
+}
+
+export function SplashScreen({ showTimer = true }: SplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
+    if (!showTimer) return;
+    
     const timer = setTimeout(() => {
       setIsVisible(false);
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [showTimer]);
 
-  if (!isVisible) return null;
+  if (!isVisible && showTimer) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background transition-opacity duration-500">
