@@ -57,7 +57,7 @@ function ThemeWrapper({ children }: { children: ReactNode }) {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>}>
         <ThemeWrapper>{children}</ThemeWrapper>
       </Suspense>
     </QueryClientProvider>
