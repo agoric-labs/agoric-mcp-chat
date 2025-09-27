@@ -89,9 +89,17 @@ function ChatContent() {
       : new URLSearchParams();
   if (contextParam) newParams.set("context", contextParam);
 
-  // Check if useAgoricWebsiteMCP param is present to determine which API to use
+  // Check params to determine which API to use
   const useAgoricWebsiteMCP = searchParams.get("useAgoricWebsiteMCP");
-  const apiBase = useAgoricWebsiteMCP ? "/api/support" : "/api/chat";
+  const theme = searchParams.get("theme");
+  
+  let apiBase = "/api/chat"; // default
+  if (useAgoricWebsiteMCP) {
+    apiBase = "/api/support";
+  } else if (theme === "ymax") {
+    apiBase = "/api/ymax";
+  }
+  
   const apiUrl = newParams.toString()
     ? `${apiBase}?${newParams.toString()}`
     : apiBase;
