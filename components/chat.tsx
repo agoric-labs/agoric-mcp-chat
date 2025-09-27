@@ -34,27 +34,30 @@ function ChatContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const chatId = params?.id as string | undefined;
-  const contextParam = searchParams.get('context');
-  const titleParam = searchParams.get('title');
-  const disableAutoFocus = !!searchParams.get('disableAutoFocus');
-  const title = titleParam ? decodeURIComponent(titleParam) : 'Agoric AI Chat';
+  const contextParam = searchParams.get("context");
+  const titleParam = searchParams.get("title");
+  const disableAutoFocus = !!searchParams.get("disableAutoFocus");
+  const title = titleParam ? decodeURIComponent(titleParam) : "Agoric AI Chat";
   const queryClient = useQueryClient();
 
-  const [selectedModel, setSelectedModel] = useLocalStorage<modelID>("selectedModel", defaultModel);
-  const [userId, setUserId] = useState<string>('');
-  const [generatedChatId, setGeneratedChatId] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useLocalStorage<modelID>(
+    "selectedModel",
+    defaultModel,
+  );
+  const [userId, setUserId] = useState<string>("");
+  const [generatedChatId, setGeneratedChatId] = useState<string>("");
 
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
 
   // Get the editor context
-  const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } = useEditor();
+  const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } =
+    useEditor();
 
   // Initialize userId
   useEffect(() => {
     setUserId(getUserId());
   }, []);
-
 
   // Add event listener for code submissions
   useEffect(() => {
@@ -64,11 +67,11 @@ function ChatContent() {
     };
 
     // Add event listener
-    window.addEventListener('code-submitted', handleCodeSubmission);
+    window.addEventListener("code-submitted", handleCodeSubmission);
 
     // Cleanup
     return () => {
-      window.removeEventListener('code-submitted', handleCodeSubmission);
+      window.removeEventListener("code-submitted", handleCodeSubmission);
     };
   }, []);
 
@@ -79,73 +82,98 @@ function ChatContent() {
     }
   }, [chatId]);
 
-  const newParams = new URLSearchParams(window.location.search);
-  if (contextParam) newParams.set('context', contextParam);
+  // Safely access window only on client side
+  const newParams =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
+  if (contextParam) newParams.set("context", contextParam);
 
   // Check if useAgoricWebsiteMCP param is present to determine which API to use
-  const useAgoricWebsiteMCP = searchParams.get('useAgoricWebsiteMCP');
-  const apiBase = useAgoricWebsiteMCP ? '/api/support' : '/api/chat';
-  const apiUrl = newParams.toString() ? `${apiBase}?${newParams.toString()}` : apiBase;
+  const useAgoricWebsiteMCP = searchParams.get("useAgoricWebsiteMCP");
+  const apiBase = useAgoricWebsiteMCP ? "/api/support" : "/api/chat";
+  const apiUrl = newParams.toString()
+    ? `${apiBase}?${newParams.toString()}`
+    : apiBase;
 
-  const { messages, input, handleInputChange, handleSubmit, status, stop, append } =
-    useChat({
-      id: chatId || generatedChatId, // Use generated ID if no chatId in URL
-      maxSteps: 20,
-      body: {
-        selectedModel,
-        mcpServers: mcpServersForApi,
-        chatId: chatId || generatedChatId, // Use generated ID if no chatId in URL
-        userId,
-      },
-      experimental_throttle: 500,
-      onFinish: () => {
-        // Invalidate the chats query to refresh the sidebar
-        if (userId) {
-          queryClient.invalidateQueries({ queryKey: ['chats', userId] });
-        }
-      },
-      onError: (error) => {
-        toast.error(
-          error.message.length > 0
-            ? error.message
-            : "An error occured, please try again later.",
-          { position: "top-center", richColors: true },
-        );
-      },
-      api: apiUrl
-    });
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    status,
+    stop,
+    append,
+  } = useChat({
+    id: chatId || generatedChatId, // Use generated ID if no chatId in URL
+    maxSteps: 20,
+    body: {
+      selectedModel,
+      mcpServers: mcpServersForApi,
+      chatId: chatId || generatedChatId, // Use generated ID if no chatId in URL
+      userId,
+    },
+    experimental_throttle: 500,
+    onFinish: () => {
+      // Invalidate the chats query to refresh the sidebar
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ["chats", userId] });
+      }
+    },
+    onError: (error) => {
+      toast.error(
+        error.message.length > 0
+          ? error.message
+          : "An error occured, please try again later.",
+        { position: "top-center", richColors: true },
+      );
+    },
+    api: apiUrl,
+  });
 
   // Define loading state early so it can be used in effects
   const isLoading = status === "streaming" || status === "submitted";
 
   // Custom submit handler - Define this BEFORE using it in the effect
-  const handleFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleFormSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
 
-    if (!chatId && generatedChatId && input.trim()) {
-      // If this is a new conversation, redirect to the chat page with the generated ID
-      const effectiveChatId = generatedChatId;
+      if (!chatId && generatedChatId && input.trim()) {
+        // If this is a new conversation, redirect to the chat page with the generated ID
+        const effectiveChatId = generatedChatId;
 
-      // Submit the form
-      handleSubmit(e);
+        // Submit the form
+        handleSubmit(e);
 
-      // Preserve all query parameters in navigation
-      const searchParams = new URLSearchParams(window.location.search);
-      const queryString = searchParams.toString();
-      const queryQuery = queryString ? `?${queryString}` : '';
-      router.push(`/chat/${effectiveChatId}${queryQuery}`);
-    } else {
-      // Normal submission for existing chats
-      handleSubmit(e);
-    }
-  }, [chatId, generatedChatId, input, handleSubmit, router]);
+        // Preserve all query parameters in navigation
+        const searchParams = new URLSearchParams(window.location.search);
+        const queryString = searchParams.toString();
+        const queryQuery = queryString ? `?${queryString}` : "";
+        router.push(`/chat/${effectiveChatId}${queryQuery}`);
+      } else {
+        // Normal submission for existing chats
+        handleSubmit(e);
+      }
+    },
+    [chatId, generatedChatId, input, handleSubmit, router],
+  );
 
   // Track previous submission to prevent loops
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
 
   useEffect(() => {
     async function onMessage(e: MessageEvent) {
-      const data = typeof e.data === 'string' ? (() => { try { return JSON.parse(e.data) } catch { return e.data } })() : e.data;
+      const data =
+        typeof e.data === "string"
+          ? (() => {
+              try {
+                return JSON.parse(e.data);
+              } catch {
+                return e.data;
+              }
+            })()
+          : e.data;
 
       if (data?.type === "ORBIT_CHAT/SET_AND_SUBMIT") {
         const text = data?.payload?.input ?? "";
@@ -158,17 +186,33 @@ function ChatContent() {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-
   // Listen for submitted code and send it to the chat
   useEffect(() => {
-    console.log("CHAT: submittedCode changed:", submittedCode, "key:", submissionKey, "lastKey:", lastSubmittedKey);
+    console.log(
+      "CHAT: submittedCode changed:",
+      submittedCode,
+      "key:",
+      submissionKey,
+      "lastKey:",
+      lastSubmittedKey,
+    );
 
     // Only proceed if:
     // 1. There's submitted code
     // 2. Valid submission key that's different from the last one we processed
     // 3. Not already loading
-    if (submittedCode && submissionKey > 0 && submissionKey !== lastSubmittedKey && !isLoading) {
-      console.log("CHAT: Preparing to submit code to chat, key changed:", submissionKey, "from:", lastSubmittedKey);
+    if (
+      submittedCode &&
+      submissionKey > 0 &&
+      submissionKey !== lastSubmittedKey &&
+      !isLoading
+    ) {
+      console.log(
+        "CHAT: Preparing to submit code to chat, key changed:",
+        submissionKey,
+        "from:",
+        lastSubmittedKey,
+      );
 
       // Update last submitted key to prevent reprocessing
       setLastSubmittedKey(submissionKey);
@@ -185,7 +229,7 @@ function ChatContent() {
       setTimeout(() => {
         // Create a synthetic form event
         const formEvent = {
-          preventDefault: () => { },
+          preventDefault: () => {},
         } as React.FormEvent<HTMLFormElement>;
 
         console.log("CHAT: Submitting form with handleFormSubmit");
@@ -195,17 +239,22 @@ function ChatContent() {
         clearSubmittedCode();
       }, 100);
     }
-  }, [submittedCode, submissionKey, lastSubmittedKey, isLoading, handleInputChange, handleFormSubmit, clearSubmittedCode]);
+  }, [
+    submittedCode,
+    submissionKey,
+    lastSubmittedKey,
+    isLoading,
+    handleInputChange,
+    handleFormSubmit,
+    clearSubmittedCode,
+  ]);
 
   return (
     <div className="h-dvh flex flex-col justify-center w-full max-w-3xl mx-auto px-2 xs:px-4 sm:px-6 py-2 xs:py-4 md:py-4 min-w-0">
       {messages.length === 0 ? (
         <div className="max-w-xl mx-auto w-full">
           <ProjectOverview heading={title} />
-          <form
-            onSubmit={handleFormSubmit}
-            className="mt-4 w-full mx-auto"
-          >
+          <form onSubmit={handleFormSubmit} className="mt-4 w-full mx-auto">
             <Textarea
               selectedModel={selectedModel}
               setSelectedModel={setSelectedModel}
@@ -223,7 +272,11 @@ function ChatContent() {
       ) : (
         <>
           <div className="flex-1 overflow-y-auto min-h-0 pb-2">
-            <Messages messages={messages} isLoading={isLoading} status={status} />
+            <Messages
+              messages={messages}
+              isLoading={isLoading}
+              status={status}
+            />
           </div>
           <form
             onSubmit={handleFormSubmit}
@@ -238,7 +291,6 @@ function ChatContent() {
               status={status}
               stop={stop}
               autoFocus={!disableAutoFocus}
-              
             />
           </form>
         </>

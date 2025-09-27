@@ -30,7 +30,7 @@ function ThemeWrapper({ children }: { children: ReactNode }) {
   const themeParam = decodeURIComponent(searchParams.get("theme") || '');
   
   // Available themes
-  const availableThemes = ["light", "dark", "sunset", "black", "dark-blue", "agoric-theme"];
+  const availableThemes = ["light", "dark", "sunset", "black", "dark-blue", "agoric-theme", "ymax"];
   
   // Use theme from query param if valid, otherwise default to dark-blue
   const defaultTheme = themeParam && availableThemes.includes(themeParam) ? themeParam : "dark-blue";

@@ -7,6 +7,7 @@
 @custom-variant black (&:is(.black *));
 @custom-variant dark-blue (&:is(.dark-blue *));
 @custom-variant agoric-theme (&:is(.agoric-theme *));
+@custom-variant ymax (&:is(.ymax *));
 
 :root {
   --background: oklch(0.99 0.01 56.32);
@@ -290,6 +291,80 @@
   --shadow-2xl: 0px 12px 24px -6px hsl(0 0% 0% / 0.10);
 }
 
+.ymax {
+  /* Page background - Ymax dark teal base */
+  --background: oklch(0.12 0.05 195.00); /* Dark teal #051D24 */
+  --foreground: oklch(0.95 0.01 200.00); /* Bright white text */
+  
+  /* Card background - Ymax darker card */
+  --card: oklch(0.08 0.06 195.00); /* Very dark teal #011217 */
+  --card-foreground: oklch(0.95 0.01 200.00); /* Bright white text */
+  
+  /* Popover elements */
+  --popover: oklch(0.08 0.06 195.00);
+  --popover-foreground: oklch(0.95 0.01 200.00);
+  
+  /* Primary button - Ymax bright teal/green */
+  --primary: oklch(0.85 0.15 165.00); /* #73F9C4 */
+  --primary-foreground: oklch(0.08 0.01 200.00); /* Dark text on bright button */
+  
+  /* Secondary elements */
+  --secondary: oklch(0.25 0.08 195.00); /* #104354 */
+  --secondary-foreground: oklch(0.92 0.01 200.00); /* Light text */
+  
+  /* Muted elements */
+  --muted: oklch(0.20 0.06 195.00);
+  --muted-foreground: oklch(0.75 0.02 200.00);
+  
+  /* Accent - bright teal */
+  --accent: oklch(0.82 0.15 165.00);
+  --accent-foreground: oklch(0.08 0.01 200.00);
+  
+  /* Destructive actions */
+  --destructive: oklch(0.51 0.16 20.19);
+  --destructive-foreground: oklch(0.95 0.01 200.00);
+  
+  /* Borders - subtle teal borders */
+  --border: oklch(0.25 0.08 195.00);
+  --input: oklch(0.25 0.08 195.00);
+  
+  /* Focus ring */
+  --ring: oklch(0.85 0.15 165.00);
+  
+  /* Chart colors */
+  --chart-1: oklch(0.85 0.15 165.00);
+  --chart-2: oklch(0.75 0.18 190.00);
+  --chart-3: oklch(0.70 0.12 170.00);
+  --chart-4: oklch(0.80 0.14 160.00);
+  --chart-5: oklch(0.60 0.10 180.00);
+  
+  /* Sidebar */
+  --sidebar: oklch(0.12 0.05 195.00);
+  --sidebar-foreground: oklch(0.92 0.01 200.00);
+  --sidebar-primary: oklch(0.85 0.15 165.00);
+  --sidebar-primary-foreground: oklch(0.08 0.01 200.00);
+  --sidebar-accent: oklch(0.82 0.15 165.00);
+  --sidebar-accent-foreground: oklch(0.08 0.01 200.00);
+  --sidebar-border: oklch(0.25 0.08 195.00);
+  --sidebar-ring: oklch(0.85 0.15 165.00);
+  
+  /* Typography */
+  --font-sans: Inter, sans-serif;
+  --font-serif: Merriweather, serif;
+  --font-mono: Ubuntu Mono, monospace;
+  --radius: 0.5rem;
+  
+  /* Shadows */
+  --shadow-2xs: 0px 1px 2px rgba(0, 0, 0, 0.06), 0px 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-xs: 0px 1px 2px rgba(0, 0, 0, 0.06), 0px 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0px 1px 2px rgba(0, 0, 0, 0.06), 0px 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow: 0px 1px 2px rgba(0, 0, 0, 0.06), 0px 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0px 1px 2px rgba(0, 0, 0, 0.06), 0px 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0px 1px 2px rgba(0, 0, 0, 0.06), 0px 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-xl: 0px 1px 2px rgba(0, 0, 0, 0.06), 0px 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-2xl: 0px 1px 2px rgba(0, 0, 0, 0.06), 0px 1px 2px rgba(0, 0, 0, 0.03);
+}
+
 
 @theme inline {
   --color-background: var(--background);
@@ -352,6 +427,69 @@
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
   }
+  
+  /* Apply Ymax background - vibrant gradient like the actual UI */
+  .ymax body {
+    background: oklch(0.12 0.05 195.00); /* Base dark teal */
+    color: oklch(0.95 0.01 200.00) !important; /* Force bright white text */
+    position: relative;
+  }
+  
+  /* Force light text colors for main content elements */
+  .ymax h1, .ymax h2, .ymax h3, .ymax h4, .ymax h5, .ymax h6,
+  .ymax p, .ymax span, .ymax div:not([class*="bg-primary"]):not([class*="bg-accent"]),
+  .ymax label, .ymax a:not([class*="bg-primary"]):not([class*="bg-accent"]),
+  .ymax [role="button"]:not([class*="bg-primary"]):not([class*="bg-accent"]) {
+    color: oklch(0.95 0.01 200.00) !important;
+  }
+  
+  /* Ensure bright buttons have dark text */
+  .ymax [class*="bg-primary"], .ymax [class*="bg-accent"],
+  .ymax button[class*="bg-primary"], .ymax button[class*="bg-accent"],
+  .ymax .bg-primary *, .ymax .bg-accent * {
+    color: oklch(0.08 0.01 200.00) !important;
+  }
+  
+  /* Create the signature Ymax gradient background with multiple blurred layers */
+  .ymax body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Main vibrant gradient from dark teal to bright cyan */
+    background: radial-gradient(ellipse 800px 600px at 100% 50%, 
+      hsla(190, 100%, 70%, 0.8) 0%,
+      hsla(185, 90%, 60%, 0.6) 25%,
+      hsla(180, 80%, 50%, 0.4) 50%,
+      hsla(195, 70%, 25%, 0.3) 75%,
+      transparent 100%);
+    filter: blur(40px);
+    z-index: -2;
+    pointer-events: none;
+  }
+  
+  /* Add secondary gradient layer for more depth */
+  .ymax body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse 600px 400px at 20% 80%, 
+      hsla(160, 100%, 70%, 0.4) 0%,
+      hsla(170, 90%, 60%, 0.3) 30%,
+      transparent 60%),
+      radial-gradient(ellipse 400px 300px at 80% 20%, 
+      hsla(200, 100%, 75%, 0.3) 0%,
+      hsla(190, 80%, 65%, 0.2) 40%,
+      transparent 70%);
+    filter: blur(60px);
+    z-index: -1;
+    pointer-events: none;
+  }
 }
 
 @layer utilities {
@@ -365,5 +503,10 @@
     -ms-overflow-style: none;  /* IE and Edge */
     /* Use Firefox-specific scrollbar hiding when supported */
     scrollbar-width: none;
+  }
+
+  /* Ymax gradient background */
+  .ymax-gradient-bg {
+    background: linear-gradient(135deg, oklch(0.12 0.04 195.00), oklch(0.08 0.06 185.00));
   }
 }
