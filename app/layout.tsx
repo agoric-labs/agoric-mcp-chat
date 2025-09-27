@@ -4,6 +4,7 @@ import { ChatSidebar } from "@/components/chat-sidebar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Menu } from "lucide-react";
 import { Providers } from "./providers";
+import { SplashScreen } from "@/components/splash-screen";
 import "./globals.css";
 import Script from "next/script";
 
@@ -41,6 +42,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className}`}>
         <Providers>
+          <SplashScreen />
           <div className="flex h-dvh w-full">
             <ChatSidebar />
             <main className="flex-1 flex flex-col relative">
