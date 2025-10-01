@@ -141,36 +141,36 @@ const components: Partial<Components> = {
   ),
   table: ({ node, children, ...props }) => (
     <div className="my-1.5 overflow-x-auto">
-      <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 black:divide-zinc-700 dark-blue:divide-zinc-700" {...props}>
+      <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 black:divide-zinc-700 dark-blue:divide-zinc-700 ymax:divide-[oklch(0.25_0.08_195.00)]" {...props}>
         {children}
       </table>
     </div>
   ),
   thead: ({ node, children, ...props }) => (
-    <thead className="bg-zinc-50 dark:bg-zinc-800/50 black:bg-zinc-800/50 dark-blue:bg-zinc-800/50" {...props}>
+    <thead className="bg-zinc-50 dark:bg-zinc-800/50 black:bg-zinc-800/50 dark-blue:bg-zinc-800/50 ymax:bg-[oklch(0.20_0.06_195.00)]" {...props}>
       {children}
     </thead>
   ),
   tbody: ({ node, children, ...props }) => (
-    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700 black:divide-zinc-700 dark-blue:divide-zinc-700 bg-white dark:bg-transparent black:bg-transparent dark-blue:bg-transparent" {...props}>
+    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700 black:divide-zinc-700 dark-blue:divide-zinc-700 ymax:divide-[oklch(0.25_0.08_195.00)] bg-white dark:bg-transparent black:bg-transparent dark-blue:bg-transparent ymax:bg-transparent" {...props}>
       {children}
     </tbody>
   ),
   tr: ({ node, children, ...props }) => (
-    <tr className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/30 black:hover:bg-zinc-800/30 dark-blue:hover:bg-zinc-800/30" {...props}>
+    <tr className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/30 black:hover:bg-zinc-800/30 dark-blue:hover:bg-zinc-800/30 ymax:hover:bg-[oklch(0.15_0.05_195.00)]" {...props}>
       {children}
     </tr>
   ),
   th: ({ node, children, ...props }) => (
     <th
-      className="px-3 py-1.5 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 black:text-zinc-400 dark-blue:text-zinc-400 uppercase tracking-wider"
+      className="px-3 py-1.5 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 black:text-zinc-400 dark-blue:text-zinc-400 ymax:text-[oklch(0.75_0.02_200.00)] uppercase tracking-wider"
       {...props}
     >
       {children}
     </th>
   ),
   td: ({ node, children, ...props }) => (
-    <td className="px-3 py-1.5 text-sm" {...props}>
+    <td className="px-3 py-1.5 text-sm ymax:text-[oklch(0.95_0.01_200.00)]" {...props}>
       {children}
     </td>
   ),
