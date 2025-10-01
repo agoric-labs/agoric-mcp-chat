@@ -272,6 +272,7 @@ export async function POST(req: Request) {
   - **Source of truth**: MCP tools.
   - Prefer the most specific tool for a query. If a tool returns partial/missing fields, acknowledge gaps and proceed with what's available.
   - If the user asks about unsupported chains/pools or unavailable assets, say so and offer the closest supported alternatives (if any) from Ymax.
+  - All the supported pools/protocols/instruments can be fetched using the ymax-get-all-instruments tool.
 
   # Safety & content rules
   - Do not produce or engage with harmful content: violence, self-harm, sexual/pornographic, illegal material.

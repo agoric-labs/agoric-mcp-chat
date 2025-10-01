@@ -55,7 +55,7 @@ const xaiClient = createXai({
 
 const languageModels = {
   "gpt-4.1-mini": openaiClient("gpt-4.1-mini"),
-  "claude-3-7-sonnet": anthropicClient('claude-3-7-sonnet-20250219'),
+  "claude-4-5-sonnet": anthropicClient('claude-sonnet-4-5'),
   "qwen-qwq": wrapLanguageModel(
     {
       model: groqClient("qwen-qwq-32b"),
@@ -73,11 +73,11 @@ export const modelDetails: Record<keyof typeof languageModels, ModelInfo> = {
     apiVersion: "gpt-4.1-mini",
     capabilities: ["Balance", "Creative", "Vision"]
   },
-  "claude-3-7-sonnet": {
+  "claude-4-5-sonnet": {
     provider: "Anthropic",
-    name: "Claude 3.7 Sonnet",
-    description: "Latest version of Anthropic's Claude 3.7 Sonnet with strong reasoning and coding capabilities.",
-    apiVersion: "claude-3-7-sonnet-20250219",
+    name: "Claude 4.5 Sonnet",
+    description: "Latest version of Anthropic's Claude 4.5 Sonnet with strong reasoning and coding capabilities.",
+    apiVersion: "claude-sonnet-4-5",
     capabilities: ["Reasoning", "Efficient", "Agentic"]
   },
   "qwen-qwq": {
@@ -114,4 +114,4 @@ export type modelID = keyof typeof languageModels;
 
 export const MODELS = Object.keys(languageModels);
 
-export const defaultModel: modelID = "claude-3-7-sonnet";
+export const defaultModel: modelID = "claude-4-5-sonnet";
