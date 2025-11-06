@@ -9,6 +9,7 @@ import { eq, and } from 'drizzle-orm';
 import { experimental_createMCPClient as createMCPClient, MCPTransport } from 'ai';
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from 'ai/mcp-stdio';
 import { spawn } from "child_process";
+import { extractDomainsFromMessages, hasUrlsInLastUserMessage } from '@/lib/utils/url-extractor';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -221,6 +222,13 @@ export async function POST(req: Request) {
   console.log("messages", messages);
   console.log("parts", messages.map(m => m.parts.map(p => p)));
 
+  // Check if the user's message contains URLs and add web search tool with domain filtering
+  const userHasUrls = hasUrlsInLastUserMessage(messages);
+  const allowedDomains = userHasUrls ? extractDomainsFromMessages(messages) : [];
+
+  console.log("URLs detected in conversation:", userHasUrls);
+  console.log("Allowed domains for web search:", allowedDomains);
+
   // Build dynamic system prompt based on ino parameter
   let systemPrompt;
   
@@ -350,11 +358,40 @@ export async function POST(req: Request) {
       // Validate it's valid JSON
       JSON.parse(context);
       systemPrompt += `\n\nAdditional information regarding a user's profile is provided via Context: ${context}.
-          For example, a user's address, or portfolio, or open positions. Instead of asking for missing 
+          For example, a user's address, or portfolio, or open positions. Instead of asking for missing
           information in a user's query, first defer to this context information and see if this suffices.`;
     } catch (error) {
       console.error('Failed to decode context parameter:', error);
     }
+  }
+
+  // Add web search instruction if URLs are detected
+  if (userHasUrls && allowedDomains.length > 0) {
+    systemPrompt += `\n\n## Web Search Capability
+
+The user has provided URLs in their message: ${allowedDomains.join(', ')}
+
+You have access to a web_search tool that will ONLY search within these specific domains. Use this tool when you need to:
+- Find information from the URLs the user provided
+- Get current/updated content from those websites
+- Answer questions about content on those specific domains
+
+The search is restricted to these domains only, so you cannot search the broader internet.`;
+  }
+
+  // Prepare web search tool configuration
+  let webSearchTool: any = undefined;
+
+  // Only add web search for Anthropic models (Claude) and only when URLs are detected
+  if (selectedModel.includes('claude') && userHasUrls && allowedDomains.length > 0) {
+    webSearchTool = {
+      type: "web_search_20250305",
+      name: "web_search",
+      max_uses: 5,
+      allowed_domains: allowedDomains,
+    };
+
+    console.log("Web search tool enabled with config:", webSearchTool);
   }
 
   // If there was an error setting up MCP clients but we at least have composio tools, continue
@@ -363,6 +400,7 @@ export async function POST(req: Request) {
     system: systemPrompt,
     messages,
     tools,
+    ...(webSearchTool && { webSearch: webSearchTool }),
     maxSteps: 20,
     providerOptions: {
       google: {
@@ -371,11 +409,11 @@ export async function POST(req: Request) {
         },
       },
       anthropic: {
-        thinking: { 
-          type: 'enabled', 
-          budgetTokens: 12000 
+        thinking: {
+          type: 'enabled',
+          budgetTokens: 12000
         },
-      } 
+      }
     },
     onError: (error) => {
       console.error(JSON.stringify(error, null, 2));

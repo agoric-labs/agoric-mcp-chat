@@ -17,6 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Testing Commands
 
 - `node test-ymax-api.js` - Test the ymax portfolio optimization API with real multi-chain data
+- `node test-url-extraction.js` - Test the URL extraction and domain filtering logic for web search feature
 
 ## Architecture Overview
 
@@ -91,6 +92,7 @@ The `/api/ymax` endpoint provides AI-powered portfolio analysis for DeFi yield o
 - **Dynamic Tool Loading**: MCP tools are loaded at runtime based on server selection
 - **Auto-installation**: Automatically installs Python packages for stdio MCP servers
 - **Cross-Origin Support**: APIs include comprehensive CORS headers for external access
+- **Web Search with Domain Filtering**: Automatically enables Claude web search when URLs are detected in user messages, restricted to only those specific domains (See `WEB_SEARCH_FEATURE.md` for details)
 
 ## Development Notes
 
