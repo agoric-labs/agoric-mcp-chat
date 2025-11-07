@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test AI SDK Client</title>
+</head>
+<body>
+  <h1>Test AI SDK v5 Client</h1>
+  <button id="sendBtn">Send Message</button>
+  <div id="messages"></div>
+  
+  <script type="module">
+    const messagesDiv = document.getElementById('messages');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    sendBtn.addEventListener('click', async () => {
+      messagesDiv.innerHTML = 'Sending...';
+      
+      try {
+        const response = await fetch('http://localhost:3002/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: [{
+              role: 'user',
+              parts: [{ type: 'text', text: 'Hello, how are you?' }]
+            }],
+            selectedModel: 'claude-4-5-sonnet',
+            userId: 'test-user',
+            mcpServers: []
+          })
+        });
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.substring(6);
+              messagesDiv.innerHTML += `<pre>${data}</pre>`;
+              console.log('Received:', data);
+            }
+          }
+        }
+      } catch (error) {
+        messagesDiv.innerHTML = 'Error: ' + error.message;
+        console.error(error);
+      }
+    });
+  </script>
+</body>
+</html>
