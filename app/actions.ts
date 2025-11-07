@@ -41,9 +41,9 @@ export async function generateTitle(messages: any[]) {
     role: msg.role,
     content: getMessageText(msg)
   }));
-  
+
   const { object } = await generateObject({
-    model: openai("gpt-4.1"),
+    model: openai.chat("gpt-4.1"),
     schema: z.object({
       title: z.string().min(1).max(100),
     }),
