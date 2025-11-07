@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message as TMessage } from "ai";
+import type { UIMessage as TMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -177,47 +177,57 @@ const PurePreviewMessage = ({
         >
           <div className="flex flex-col w-full space-y-3 min-w-0">
             {message.parts?.map((part, i) => {
-              switch (part.type) {
-                case "text":
-                  return (
-                    <motion.div
-                      initial={{ y: 5, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      key={`message-${message.id}-part-${i}`}
-                      className="flex flex-row gap-2 items-start w-full min-w-0"
+              // Handle text parts
+              if (part.type === "text") {
+                return (
+                  <motion.div
+                    initial={{ y: 5, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    key={`message-${message.id}-part-${i}`}
+                    className="flex flex-row gap-2 items-start w-full min-w-0"
+                  >
+                    <div
+                      className={cn("flex flex-col gap-3 w-full min-w-0 break-words overflow-x-auto", {
+                        "bg-secondary text-secondary-foreground px-2 xs:px-3 sm:px-4 py-2 xs:py-3 rounded-2xl":
+                          message.role === "user",
+                      })}
                     >
-                      <div
-                        className={cn("flex flex-col gap-3 w-full min-w-0 break-words overflow-x-auto", {
-                          "bg-secondary text-secondary-foreground px-2 xs:px-3 sm:px-4 py-2 xs:py-3 rounded-2xl":
-                            message.role === "user",
-                        })}
+                      <Markdown
+                        messageId={message.id}
+                        isEditable={message.role === "assistant"}
                       >
-                        <Markdown 
-                          messageId={message.id}
-                          isEditable={message.role === "assistant"}
-                        >
-                          {message.role === "user" ? cleanDisplayText(part.text) : part.text}
-                        </Markdown>
-                      </div>
-                    </motion.div>
-                  );
-                case "tool-invocation":
-                  if (hideTools) return null;
-                  
-                  const { toolName, state, args } = part.toolInvocation;
-                  const result = 'result' in part.toolInvocation ? part.toolInvocation.result : null;
-                  
-                  return (
-                    <ToolInvocation
-                      key={`message-${message.id}-part-${i}`}
-                      toolName={toolName}
-                      state={state}
-                      args={args}
-                      result={result}
-                      isLatestMessage={isLatestMessage}
-                      status={status}
-                    />
-                  );
+                        {message.role === "user" ? cleanDisplayText(part.text) : part.text}
+                      </Markdown>
+                    </div>
+                  </motion.div>
+                );
+              }
+
+              // Handle tool parts (v5 format: tool-{toolName})
+              if (part.type.startsWith("tool-")) {
+                if (hideTools) return null;
+
+                const toolName = part.type.substring(5); // Remove "tool-" prefix
+                const toolPart = part as any; // Type assertion for tool part
+                const state = toolPart.state;
+                const args = toolPart.input;
+                const result = toolPart.output;
+
+                return (
+                  <ToolInvocation
+                    key={`message-${message.id}-part-${i}`}
+                    toolName={toolName}
+                    state={state}
+                    args={args}
+                    result={result}
+                    isLatestMessage={isLatestMessage}
+                    status={status}
+                  />
+                );
+              }
+
+              // Handle other part types
+              switch (part.type) {
                 case "reasoning":
                   if (hideReasoning) return null;
                   
@@ -252,8 +262,6 @@ const PurePreviewMessage = ({
 
 export const Message = memo(PurePreviewMessage, (prevProps, nextProps) => {
   if (prevProps.status !== nextProps.status) return false;
-  if (prevProps.message.annotations !== nextProps.message.annotations)
-    return false;
   if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
   return true;
 });
