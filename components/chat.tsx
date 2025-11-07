@@ -1,7 +1,8 @@
 "use client";
 
 import { defaultModel, type modelID } from "@/ai/providers";
-import { Message, useChat } from "@ai-sdk/react";
+import { UIMessage, useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
@@ -104,23 +105,30 @@ function ChatContent() {
     ? `${apiBase}?${newParams.toString()}`
     : apiBase;
 
+  // Manage input state manually in v5
+  const [input, setInput] = useState("");
+
   const {
     messages,
-    input,
-    handleInputChange,
-    handleSubmit,
+    sendMessage,
     status,
     stop,
-    append,
   } = useChat({
     id: chatId || generatedChatId, // Use generated ID if no chatId in URL
-    maxSteps: 20,
-    body: {
-      selectedModel,
-      mcpServers: mcpServersForApi,
-      chatId: chatId || generatedChatId, // Use generated ID if no chatId in URL
-      userId,
-    },
+    transport: new DefaultChatTransport({
+      api: apiUrl,
+      prepareSendMessagesRequest({ messages }) {
+        return {
+          body: {
+            messages,
+            selectedModel,
+            mcpServers: mcpServersForApi,
+            chatId: chatId || generatedChatId,
+            userId,
+          },
+        };
+      },
+    }),
     experimental_throttle: 500,
     onFinish: () => {
       // Invalidate the chats query to refresh the sidebar
@@ -136,7 +144,6 @@ function ChatContent() {
         { position: "top-center", richColors: true },
       );
     },
-    api: apiUrl,
   });
 
   // Define loading state early so it can be used in effects
@@ -147,12 +154,15 @@ function ChatContent() {
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
 
-      if (!chatId && generatedChatId && input.trim()) {
+      if (!input.trim()) return;
+
+      if (!chatId && generatedChatId) {
         // If this is a new conversation, redirect to the chat page with the generated ID
         const effectiveChatId = generatedChatId;
 
-        // Submit the form
-        handleSubmit(e);
+        // Submit the message
+        sendMessage({ text: input });
+        setInput('');
 
         // Preserve all query parameters in navigation
         const searchParams = new URLSearchParams(window.location.search);
@@ -161,11 +171,17 @@ function ChatContent() {
         router.push(`/chat/${effectiveChatId}${queryQuery}`);
       } else {
         // Normal submission for existing chats
-        handleSubmit(e);
+        sendMessage({ text: input });
+        setInput('');
       }
     },
-    [chatId, generatedChatId, input, handleSubmit, router],
+    [chatId, generatedChatId, input, sendMessage, router],
   );
+
+  // Handle input changes
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+  }, []);
 
   // Track previous submission to prevent loops
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
@@ -186,7 +202,7 @@ function ChatContent() {
       if (data?.type === "ORBIT_CHAT/SET_AND_SUBMIT") {
         const text = data?.payload?.input ?? "";
         if (text) {
-          await append({ role: "user", content: text } as Message);
+          sendMessage({ text });
         }
       }
     }
