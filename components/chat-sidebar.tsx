@@ -172,15 +172,15 @@ export function ChatSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    className="w-full p-2 flex items-center justify-between gap-2 transition-all hover:bg-secondary/50 active:bg-secondary/70 cursor-default"
+                  <div
+                    className="w-full p-2 flex items-center justify-between gap-2 transition-all hover:bg-secondary/50 rounded-md cursor-default"
                   >
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                       <span className="text-sm text-foreground/80">Theme</span>
                     </div>
                     <ThemeToggle className="h-6 w-6" />
-                  </SidebarMenuButton>
+                  </div>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>

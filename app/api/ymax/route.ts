@@ -399,9 +399,9 @@ export async function POST(req: Request) {
     },
   });
 
-  result.consumeStream();
   return result.toUIMessageStreamResponse({
     sendReasoning: true,
+    originalMessages: messages,
     headers: {
       "Content-Type": "text/event-stream",
     },
