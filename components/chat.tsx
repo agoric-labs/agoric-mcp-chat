@@ -131,12 +131,14 @@ function ChatContent() {
     }),
     experimental_throttle: 500,
     onFinish: () => {
+      console.log("CHAT: onFinish called with messages:", messages);
       // Invalidate the chats query to refresh the sidebar
       if (userId) {
         queryClient.invalidateQueries({ queryKey: ["chats", userId] });
       }
     },
     onError: (error) => {
+      console.error("CHAT: onError", error);
       toast.error(
         error.message.length > 0
           ? error.message
@@ -145,6 +147,16 @@ function ChatContent() {
       );
     },
   });
+
+  // Debug: Log messages whenever they change
+  useEffect(() => {
+    console.log("CHAT: messages changed:", messages);
+    console.log("CHAT: message count:", messages.length);
+    if (messages.length > 0) {
+      console.log("CHAT: last message:", messages[messages.length - 1]);
+      console.log("CHAT: last message parts:", messages[messages.length - 1]?.parts);
+    }
+  }, [messages]);
 
   // Define loading state early so it can be used in effects
   const isLoading = status === "streaming" || status === "submitted";
@@ -156,26 +168,21 @@ function ChatContent() {
 
       if (!input.trim()) return;
 
+      // Submit the message first
+      sendMessage({ text: input });
+      setInput('');
+
+      // If this is a new conversation, update the URL without causing a remount
       if (!chatId && generatedChatId) {
-        // If this is a new conversation, redirect to the chat page with the generated ID
-        const effectiveChatId = generatedChatId;
-
-        // Submit the message
-        sendMessage({ text: input });
-        setInput('');
-
         // Preserve all query parameters in navigation
         const searchParams = new URLSearchParams(window.location.search);
         const queryString = searchParams.toString();
         const queryQuery = queryString ? `?${queryString}` : "";
-        router.push(`/chat/${effectiveChatId}${queryQuery}`);
-      } else {
-        // Normal submission for existing chats
-        sendMessage({ text: input });
-        setInput('');
+        // Use replace instead of push to update URL without triggering navigation
+        window.history.replaceState({}, '', `/chat/${generatedChatId}${queryQuery}`);
       }
     },
-    [chatId, generatedChatId, input, sendMessage, router],
+    [chatId, generatedChatId, input, sendMessage],
   );
 
   // Handle input changes
