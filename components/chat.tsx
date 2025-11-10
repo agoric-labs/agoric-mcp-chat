@@ -45,7 +45,7 @@ function ChatContent() {
     "selectedModel",
     defaultModel,
   );
-  const [userId, setUserId] = useState<string>("");
+  const [userId, setUserId] = useState<string>(getUserId());
   const [generatedChatId, setGeneratedChatId] = useState<string>("");
 
   // Get MCP server data from context
@@ -54,11 +54,6 @@ function ChatContent() {
   // Get the editor context
   const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } =
     useEditor();
-
-  // Initialize userId
-  useEffect(() => {
-    setUserId(getUserId());
-  }, []);
 
   // Add event listener for code submissions
   useEffect(() => {
