@@ -12,6 +12,7 @@ import {
 } from "ai";
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio";
 import { spawn } from "child_process";
+import { checkToolSchemaSize } from "@/lib/toolSize";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -265,7 +266,16 @@ export async function POST(req: Request) {
   3) **Risk assessment**: Explain risk posture of pools/protocols using Ymax metrics to the extent possible if information is available (e.g., liquidity depth, concentration, volatility, protocol health, exploit history).
   4) **Portfolio information**: Show positions, balances, allocations, PnL where available, and explain them in plain language.
   5) **Optimizations**: Suggest portfolio optimizations (e.g., risk reduction, improved risk-adjusted yield, diversification) and provide step-by-step reasoning grounded in Ymax data.
-  6) **Transaction tracking ("Where is my money?")**: Report status of any signed transaction (e.g., pending with Axelar, in CCTP, on destination chain, deposited to pool), including hops and current known location.
+  6) **Transaction tracking ("Where is my money?")**: Report status of any signed transaction (e.g., pending with Axelar, in CCTP, on destination chain, deposited to pool), including hops and current known location. Cross-chain transactions typically flow: Agoric → Noble (IBC) → Destination EVM chain (CCTP). Present transaction hashes, amounts, timestamps, and block explorer links when available.
+  
+  **For cross-chain transaction tracking:**
+  - Look for tools with "trace", "fetch", or "portfolio" in their names that handle cross-chain flows
+  - Prefer tools that provide complete workflows or ordered sequences over individual step tools
+  - If a tool returns a sequence of other tools to execute, follow that sequence in order
+  - For portfolio-based queries, look for tools that can extract addresses from portfolio data
+  - For specific hop analysis (Axelar, IBC, CCTP), look for step-specific tools if needed
+  - Use the most comprehensive tool available that matches the user's request
+  
   7) **Extensibility**: If asked for a supported-but-different query, use the most relevant YMax tool, state any limits, and return best-effort results grounded in available data.
 
   # Data & tools
@@ -302,6 +312,8 @@ export async function POST(req: Request) {
   # Examples of behavior
   - If asked "Why did APY drop in Pool X this week?": fetch trend series, compute week-over-week delta, cite changes available from YMax, and explain likely causes; include uncertainty if drivers are not explicit.
   - If asked "Optimize my portfolio for lower risk but similar yield": fetch positions, evaluate alternatives surfaced by [tool], explain trade-offs and steps; do not promise outcomes.
+  - If asked "Where is my money?" or "Track my transaction": Look for tools that handle cross-chain transaction tracking. If portfolio path is available, first look for tools that can extract addresses from portfolios, then use tools that provide complete transaction flow tracking with all hops, amounts, and explorer links.
+  - If asked "Check my Axelar transaction": Look for tools that specifically trace Axelar GMP transactions or cross-chain steps involving Axelar.
 
   # Important prohibitions
   - Do not fabricate values, addresses, tx hashes, or statuses.
@@ -326,6 +338,28 @@ export async function POST(req: Request) {
     } catch (error) {
       console.error("Failed to decode context parameter:", error);
     }
+  }
+
+  const { exceedsLimit, isNearLimit, estimatedTokens, toolCount } = checkToolSchemaSize(tools);
+
+  if (exceedsLimit) {
+    return new Response(
+      JSON.stringify({
+        error: "Too many tools loaded",
+        message: `The request is too large (${toolCount} tools, ~${Math.round(
+          estimatedTokens / 1000
+        )}k tokens estimated). Try: 
+        1) Disconnecting unused MCP servers 
+        2) Starting a new chat 
+        3) Narrowing your query.`,
+        toolCount,
+        estimatedTokens,
+      }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 
   // If there was an error setting up MCP clients but we at least have composio tools, continue
@@ -379,6 +413,12 @@ export async function POST(req: Request) {
       if (error instanceof Error) {
         if (error.message.includes("Rate limit")) {
           return "Rate limit exceeded. Please try again later.";
+        }
+        if (error.message.includes("prompt is too long") || error.message.includes("tokens >")) {
+          return "The request is too large due to too many available tools. Please try: 1) Disconnecting some MCP servers you're not using, 2) Using a shorter conversation history, or 3) Being more specific in your query.";
+        }
+        if (error.message.includes("maximum context length")) {
+          return "The conversation is too long. Please start a new chat or reduce the number of connected MCP servers.";
         }
       }
       console.error(error);
