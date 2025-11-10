@@ -172,7 +172,7 @@ export function ChatSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <div
+                  <SidebarMenuButton
                     className="w-full p-2 flex items-center justify-between gap-2 transition-all hover:bg-secondary/50 rounded-md cursor-default"
                   >
                     <div className="flex items-center gap-2">
@@ -180,7 +180,7 @@ export function ChatSidebar() {
                       <span className="text-sm text-foreground/80">Theme</span>
                     </div>
                     <ThemeToggle className="h-6 w-6" />
-                  </div>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>

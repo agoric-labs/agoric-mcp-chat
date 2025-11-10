@@ -126,7 +126,6 @@ function ChatContent() {
     }),
     experimental_throttle: 500,
     onFinish: () => {
-      console.log("CHAT: onFinish called with messages:", messages);
       // Invalidate the chats query to refresh the sidebar
       if (userId) {
         queryClient.invalidateQueries({ queryKey: ["chats", userId] });
@@ -142,16 +141,6 @@ function ChatContent() {
       );
     },
   });
-
-  // Debug: Log messages whenever they change
-  useEffect(() => {
-    console.log("CHAT: messages changed:", messages);
-    console.log("CHAT: message count:", messages.length);
-    if (messages.length > 0) {
-      console.log("CHAT: last message:", messages[messages.length - 1]);
-      console.log("CHAT: last message parts:", messages[messages.length - 1]?.parts);
-    }
-  }, [messages]);
 
   // Define loading state early so it can be used in effects
   const isLoading = status === "streaming" || status === "submitted";
