@@ -22,7 +22,7 @@ const cleanDisplayText = (text: string): string => {
 interface ReasoningPart {
   type: "reasoning";
   reasoning: string;
-  details: Array<{ type: "text"; text: string }>;
+  text: string;
 }
 
 interface ReasoningMessagePartProps {
@@ -116,21 +116,9 @@ export function ReasoningMessagePart({
             <div className="text-xs text-muted-foreground/70 pl-1 font-medium">
               The assistant&apos;s thought process:
             </div>
-            {part.details && Array.isArray(part.details) ? (
-              part.details.map((detail, detailIndex) =>
-                detail.type === "text" ? (
-                  <div key={detailIndex} className="px-2 py-1.5 bg-muted/10 rounded-md border border-border/30">
-                    <Markdown>{detail.text}</Markdown>
-                  </div>
-                ) : (
-                  <span key={detailIndex}>&lt;redacted&gt;</span>
-                ),
-              )
-            ) : (
-              <div className="px-2 py-1.5 bg-muted/10 rounded-md border border-border/30">
-                <Markdown>{part.reasoning || "Thinking..."}</Markdown>
-              </div>
-            )}
+            <div className="px-2 py-1.5 bg-muted/10 rounded-md border border-border/30">
+              <Markdown>{part.text || "Thinking..."}</Markdown>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
