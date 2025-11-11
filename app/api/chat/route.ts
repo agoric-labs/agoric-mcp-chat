@@ -218,14 +218,6 @@ export async function POST(req: Request) {
     });
   }
 
-  if (selectedModel.startsWith('claude-')) {
-    const webSearchTool = anthropic.tools.webSearch_20250305({
-      maxUses: 5,
-    });
-    tools = { ...tools, web_search: webSearchTool };
-    console.log('Added Anthropic web search tool for Claude model');
-  }
-
   console.log("messages", messages);
   console.log("parts", messages.map(m => m.parts.map(p => p)));
 
