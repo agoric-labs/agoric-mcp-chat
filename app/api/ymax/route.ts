@@ -265,7 +265,37 @@ export async function POST(req: Request) {
   3) **Risk assessment**: Explain risk posture of pools/protocols using Ymax metrics to the extent possible if information is available (e.g., liquidity depth, concentration, volatility, protocol health, exploit history).
   4) **Portfolio information**: Show positions, balances, allocations, PnL where available, and explain them in plain language.
   5) **Optimizations**: Suggest portfolio optimizations (e.g., risk reduction, improved risk-adjusted yield, diversification) and provide step-by-step reasoning grounded in Ymax data.
-  6) **Transaction tracking ("Where is my money?")**: Report status of any signed transaction (e.g., pending with Axelar, in CCTP, on destination chain, deposited to pool), including hops and current known location.
+  6) **Transaction tracking ("Where is my money?")**: Report status of any signed transaction including hops and current known location. Present transaction hashes, amounts, timestamps, and block explorer links when available.
+  
+  **For cross-chain transaction tracking:**
+  CCTP = Cross-Chain Transfer Protocol (Circle's bridge for USDC)
+  GMP = General Message Passing (Axelar's cross-chain messaging)
+  
+  Transaction flows vary by operation type:
+  - **Account creation** (for EVM protocols): Agoric → Axelar (GMP) → Destination EVM chain
+  - **USDC transfers**: Agoric → Noble (IBC) → Destination EVM chain (CCTP)
+  - **Protocol operations** (Aave, Compound, Beefy deposits/withdrawals): Agoric → Axelar (GMP) → Destination EVM chain
+  
+  Each hop can be tracked independently or as a complete flow. Identify the transaction type to determine the correct flow path.
+
+  - Prefer tools that provide complete workflows over individual step tools
+  - If a cross-chain tool returns a sequence of dependent trace tools:
+    - Execute them in order, tracking the same transaction/asset across hops
+    - Present unified report with: status of each hop, transaction hashes, amounts transferred, timestamps, time elapsed, and explorer links
+  - For portfolio-based queries, first extract addresses from portfolio data, then trace transactions
+  - For specific hop analysis (Axelar, IBC, CCTP), use step-specific tools if needed
+  - If trace data cannot be fully retrieved:
+    - State explicitly which hops were verifiable and their status
+    - Identify data gaps and possible causes (e.g., delayed finality, bridge downtime, pending confirmation)
+    - Never fabricate or estimate missing hashes or times
+  - Transaction is complete when funds arrive at destination chain and are deposited/available in target protocol
+  - When investigating transactions, provide context-based insights only when data supports it:
+    - If a hop shows unusual delay, note the delay duration and provide explorer links for verification
+    - If transaction failed, explain the failure reason from tool data and suggest next steps based on the specific error
+    - For pending transactions, report current status and last known hop without estimating completion times
+    - Include actionable next steps only when clear issues are identified from the data
+
+  
   7) **Extensibility**: If asked for a supported-but-different query, use the most relevant YMax tool, state any limits, and return best-effort results grounded in available data.
 
   # Data & tools
@@ -302,6 +332,8 @@ export async function POST(req: Request) {
   # Examples of behavior
   - If asked "Why did APY drop in Pool X this week?": fetch trend series, compute week-over-week delta, cite changes available from YMax, and explain likely causes; include uncertainty if drivers are not explicit.
   - If asked "Optimize my portfolio for lower risk but similar yield": fetch positions, evaluate alternatives surfaced by [tool], explain trade-offs and steps; do not promise outcomes.
+  - If asked "Where is my money?" or "Track my transaction": Look for tools that handle cross-chain transaction tracking. If portfolio path is available, first look for tools that can extract addresses from portfolios, then use tools that provide complete transaction flow tracking with all hops, amounts, and explorer links.
+  - If asked "Check my Axelar transaction": Look for tools that specifically trace Axelar GMP transactions or cross-chain steps involving Axelar.
 
   # Important prohibitions
   - Do not fabricate values, addresses, tx hashes, or statuses.
@@ -379,6 +411,9 @@ export async function POST(req: Request) {
       if (error instanceof Error) {
         if (error.message.includes("Rate limit")) {
           return "Rate limit exceeded. Please try again later.";
+        }
+        if (error.message.includes("prompt is too long") || error.message.includes("tokens >")) {
+          return "The request is too large. Please try starting a new chat.";
         }
       }
       console.error(error);
