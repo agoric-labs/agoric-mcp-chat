@@ -265,16 +265,19 @@ export async function POST(req: Request) {
   3) **Risk assessment**: Explain risk posture of pools/protocols using Ymax metrics to the extent possible if information is available (e.g., liquidity depth, concentration, volatility, protocol health, exploit history).
   4) **Portfolio information**: Show positions, balances, allocations, PnL where available, and explain them in plain language.
   5) **Optimizations**: Suggest portfolio optimizations (e.g., risk reduction, improved risk-adjusted yield, diversification) and provide step-by-step reasoning grounded in Ymax data.
-  6) **Transaction tracking ("Where is my money?")**: Report status of any signed transaction (e.g., pending with Axelar, in CCTP, on destination chain, deposited to pool), including hops and current known location. Cross-chain transactions typically flow: Agoric → Noble (IBC) → Destination EVM chain (CCTP). Present transaction hashes, amounts, timestamps, and block explorer links when available.
+  6) **Transaction tracking ("Where is my money?")**: Report status of any signed transaction including hops and current known location. Present transaction hashes, amounts, timestamps, and block explorer links when available.
   
   **For cross-chain transaction tracking:**
   CCTP = Cross-Chain Transfer Protocol (Circle's bridge for USDC)
   GMP = General Message Passing (Axelar's cross-chain messaging)
   
-  Transaction flow: Agoric (source) → Noble (via IBC) → Destination EVM chain (via CCTP)
-  Each hop can be tracked independently or as a complete flow.
+  Transaction flows vary by operation type:
+  - **Account creation** (for EVM protocols): Agoric → Axelar (GMP) → Destination EVM chain
+  - **USDC transfers**: Agoric → Noble (IBC) → Destination EVM chain (CCTP)
+  - **Protocol operations** (Aave, Compound, Beefy deposits/withdrawals): Agoric → Axelar (GMP) → Destination EVM chain
+  
+  Each hop can be tracked independently or as a complete flow. Identify the transaction type to determine the correct flow path.
 
-  - Look for tools with "trace", "fetch", or "portfolio" in their names that handle cross-chain flows
   - Prefer tools that provide complete workflows over individual step tools
   - If a cross-chain tool returns a sequence of dependent trace tools:
     - Execute them in order, tracking the same transaction/asset across hops
