@@ -44,12 +44,24 @@ export function ToolInvocation({
     },
   };
 
+  // Convert tool names to "Title Case"
+  const formatToolName = (name: string): string => {
+    return name
+      .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
+      .replaceAll(/[_-]/g, " ")
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  };
+
   const getStatusIcon = () => {
     if (state === "call") {
       if (isLatestMessage && status !== "ready") {
         return <Loader2 className="animate-spin h-3.5 w-3.5 text-primary/70" />;
       }
-      return <Circle className="h-3.5 w-3.5 fill-muted-foreground/10 text-muted-foreground/70" />;
+      return (
+        <Circle className="h-3.5 w-3.5 fill-muted-foreground/10 text-muted-foreground/70" />
+      );
     }
     return <CheckCircle2 size={14} className="text-primary/90" />;
   };
@@ -86,21 +98,40 @@ export function ToolInvocation({
       "bg-gradient-to-b from-background to-muted/30 backdrop-blur-sm",
       "transition-all duration-200 hover:border-border/80 group"
     )}>
-      <div 
+      <div
         className={cn(
           "flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors",
-          "hover:bg-muted/20"
+          "hover:bg-muted/20",
         )}
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center justify-center rounded-full w-5 h-5 bg-primary/5 text-primary">
           <TerminalSquare className="h-3.5 w-3.5" />
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground flex-1">
-          <span className="text-foreground font-semibold tracking-tight">{toolName}</span>
-          <ArrowRight className="h-3 w-3 text-muted-foreground/50" />
-          <span className={cn("font-medium", getStatusClass())}>
-            {state === "call" ? (isLatestMessage && status !== "ready" ? "Running" : "Waiting") : "Completed"}
+        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-foreground tracking-tight">
+              {formatToolName(toolName)}
+            </span>
+            <span
+              className={cn(
+                "text-xs font-medium px-1.5 py-0.5 rounded-md",
+                state === "call"
+                  ? isLatestMessage && status !== "ready"
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground"
+                  : "bg-primary/10 text-primary",
+              )}
+            >
+              {state === "call"
+                ? isLatestMessage && status !== "ready"
+                  ? "Running"
+                  : "Waiting"
+                : "Completed"}
+            </span>
+          </div>
+          <span className="text-xs text-muted-foreground/60 font-mono">
+            {toolName}
           </span>
         </div>
         <div className="flex items-center gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
