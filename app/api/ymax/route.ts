@@ -270,23 +270,27 @@ export async function POST(req: Request) {
   **For cross-chain transaction tracking:**
   CCTP = Cross-Chain Transfer Protocol (Circle's bridge for USDC)
   GMP = General Message Passing (Axelar's cross-chain messaging)
-  Cross-chain transaction flow context:
-  When users move assets cross-chain via Agoric Orchestration, transactions typically follow this path:
-  Agoric (source) → Noble (via IBC) → Destination EVM chain (via CCTP). Each hop can be tracked
-  independently or as a complete flow. Present transaction details with hashes, amounts, and explorer links.
+  
+  Transaction flow: Agoric (source) → Noble (via IBC) → Destination EVM chain (via CCTP)
+  Each hop can be tracked independently or as a complete flow.
 
   - Look for tools with "trace", "fetch", or "portfolio" in their names that handle cross-chain flows
-  - Prefer tools that provide complete workflows or ordered sequences over individual step tools
+  - Prefer tools that provide complete workflows over individual step tools
   - If a cross-chain tool returns a sequence of dependent trace tools:
-    - Execute them in order, ensuring continuity of asset identifiers and timestamps
-    - Aggregate the resulting hop data into a unified transaction report
-  - For portfolio-based queries, look for tools that can extract addresses from portfolio data
-  - For specific hop analysis (Axelar, IBC, CCTP), look for step-specific tools if needed
-  - Use the most comprehensive tool available that matches the user's request
-  -If trace data cannot be fully retrieved:
-    - State explicitly which hops were verifiable
-    - Identify data gaps and possible causes (e.g., delayed finality, bridge downtime)
-    - Do not fabricate or estimate missing hashes or times
+    - Execute them in order, tracking the same transaction/asset across hops
+    - Present unified report with: status of each hop, transaction hashes, amounts transferred, timestamps, time elapsed, and explorer links
+  - For portfolio-based queries, first extract addresses from portfolio data, then trace transactions
+  - For specific hop analysis (Axelar, IBC, CCTP), use step-specific tools if needed
+  - If trace data cannot be fully retrieved:
+    - State explicitly which hops were verifiable and their status
+    - Identify data gaps and possible causes (e.g., delayed finality, bridge downtime, pending confirmation)
+    - Never fabricate or estimate missing hashes or times
+  - Transaction is complete when funds arrive at destination chain and are deposited/available in target protocol
+  - When investigating transactions, provide context-based insights only when data supports it:
+    - If a hop shows unusual delay, note the delay duration and provide explorer links for verification
+    - If transaction failed, explain the failure reason from tool data and suggest next steps based on the specific error
+    - For pending transactions, report current status and last known hop without estimating completion times
+    - Include actionable next steps only when clear issues are identified from the data
 
   
   7) **Extensibility**: If asked for a supported-but-different query, use the most relevant YMax tool, state any limits, and return best-effort results grounded in available data.
