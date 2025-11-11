@@ -360,11 +360,10 @@ export async function POST(req: Request) {
     **For Transaction Issues:**
     1. Check transaction state and timing
     2. Compare against normal thresholds
-    3. Use cross-chain tracing tools (look for tools with "trace" in name that handle cross-chain flows) to identify where transaction is stuck
-    4. Identify likely root cause based on tool results
-    5. Provide troubleshooting steps
-    6. Include escalation path if needed
-    7. Explain the output of MCP tool call results as it has important information
+    3. Identify likely root cause
+    4. Provide troubleshooting steps
+    5. Include escalation path if needed
+    6. Explain the output of MCP tool call results as it has important information
 
     **For Performance Queries:**
     1. Identify relevant metrics/timeframe
