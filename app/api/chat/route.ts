@@ -218,6 +218,14 @@ export async function POST(req: Request) {
     });
   }
 
+  // Add Anthropic web search tool if using Claude model
+  if (selectedModel.startsWith('claude-')) {
+    const webSearchTool = anthropic.tools.webSearch_20250305({
+      maxUses: 5,
+    });
+    tools = { ...tools, web_search: webSearchTool };
+  }
+
   console.log("messages", messages);
   console.log("parts", messages.map(m => m.parts.map(p => p)));
 
