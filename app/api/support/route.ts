@@ -465,12 +465,6 @@ export async function POST(req: Request) {
         if (error.message.includes("Rate limit")) {
           return "Rate limit exceeded. Please try again later.";
         }
-        if (error.message.includes("prompt is too long") || error.message.includes("tokens >")) {
-          return "Request too large. Disconnect unused MCP servers or start a new chat.";
-        }
-        if (error.message.includes("maximum context length")) {
-          return "Conversation too long. Start a new chat.";
-        }
       }
       console.error(error);
       return "An error occurred.";

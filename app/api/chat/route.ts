@@ -9,7 +9,6 @@ import { eq, and } from 'drizzle-orm';
 import { experimental_createMCPClient as createMCPClient, MCPTransport } from 'ai';
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from 'ai/mcp-stdio';
 import { spawn } from "child_process";
-import { checkToolSchemaSize } from "@/lib/toolSize";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -196,7 +195,6 @@ export async function POST(req: Request) {
       const mcptools = await mcpClient.tools();
 
       console.log(`MCP tools from ${mcpServer.type} transport:`, Object.keys(mcptools));
-      console.log(`Total tools loaded: ${Object.keys({ ...tools, ...mcptools }).length}`);
 
       // Add MCP tools to tools object
       tools = { ...tools, ...mcptools };
@@ -242,8 +240,7 @@ export async function POST(req: Request) {
     - Agoric smart contract yield optimization
     - Risk-adjusted portfolio allocation strategies
     - TVL and APY trend analysis
-    - IBC transfer and gas cost-benefit analysis
-    - Cross chain transaction tracking and status monitoring across chains 
+    - IBC transfer and gas cost-benefit analysis 
 
     ## Analysis Framework:
     1. **Current State Assessment**: Analyze existing allocations vs target allocations
@@ -264,11 +261,6 @@ export async function POST(req: Request) {
     IBC = Inter-Blockchain Communication
     TVL = Total Value Locked
     APY = Annual Percentage Yield
-    CCTP = Cross-Chain Transfer Protocol (Circle's USDC bridge)
-
-    Cross-chain context:
-    Asset movements follow: Agoric → Noble (IBC) → Destination EVM chain (CCTP).
-    Track transactions at each hop when users ask about fund location or status.
 
     Today's date is ${new Date().toISOString().split('T')[0]}.
 
@@ -298,7 +290,7 @@ export async function POST(req: Request) {
     Agoric\'s Orchestration capabilities and smart contracts.
     You act as a vigilant assistant asset manager,
     guiding users through actions like IBC transfers, cross-chain swaps, staking, vault management,
-    contract interactions, and transaction tracking. Always prioritize the safety and sovereignty of user assets.
+    and contract interactions. Always prioritize the safety and sovereignty of user assets.
     Before suggesting or performing any action:
       Verify the user\'s intent and provide clear, simple explanations of the risks and outcomes.
       Confirm transaction details explicitly, especially if they involve asset movement.
@@ -325,21 +317,6 @@ export async function POST(req: Request) {
     PSM = Parity Stability Module
     MCP = Model Context Protocol (this is not a prodocut from agoric)
     IBC = Inter-Blockchain Communication
-    CCTP = Cross-Chain Transfer Protocol (Circle's bridge for USDC)
-    GMP = General Message Passing (Axelar's cross-chain messaging)
-
-    Cross-chain transaction flow context:
-    When users move assets cross-chain via Agoric Orchestration, transactions typically follow this path:
-    Agoric (source) → Noble (via IBC) → Destination EVM chain (via CCTP). Each hop can be tracked
-    independently or as a complete flow. Present transaction details with hashes, amounts, and explorer links.
-    
-    **For cross-chain transaction tracking:**
-    When users ask about transaction status, "where is my money", or cross-chain transfers:
-    - Look for tools with "trace", "fetch", or "portfolio" in their names that handle cross-chain flows
-    - Prefer tools that provide complete workflows or ordered sequences over individual step tools
-    - If a tool returns a sequence of other tools to execute, follow that sequence in order
-    - For portfolio-based queries, look for tools that can extract addresses from portfolio data
-    - Use the most comprehensive tool available that matches the user's request
 
     Today's date is ${new Date().toISOString().split('T')[0]}.
 
@@ -378,28 +355,6 @@ export async function POST(req: Request) {
     } catch (error) {
       console.error('Failed to decode context parameter:', error);
     }
-  }
-
-  const { exceedsLimit, isNearLimit, estimatedTokens, toolCount } = checkToolSchemaSize(tools);
-
-  if (exceedsLimit) {
-    return new Response(
-      JSON.stringify({
-        error: "Too many tools loaded",
-        message: `The request is too large (${toolCount} tools, ~${Math.round(
-          estimatedTokens / 1000
-        )}k tokens estimated). Try: 
-        1) Disconnecting unused MCP servers 
-        2) Starting a new chat 
-        3) Narrowing your query.`,
-        toolCount,
-        estimatedTokens,
-      }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
   }
 
   // If there was an error setting up MCP clients but we at least have composio tools, continue
@@ -453,12 +408,6 @@ export async function POST(req: Request) {
       if (error instanceof Error) {
         if (error.message.includes("Rate limit")) {
           return "Rate limit exceeded. Please try again later.";
-        }
-        if (error.message.includes("prompt is too long") || error.message.includes("tokens >")) {
-          return "The request is too large. Try starting a new chat";
-        }
-        if (error.message.includes("maximum context length")) {
-          return "The conversation is too long. Please start a new chat or reduce the number of connected MCP servers.";
         }
       }
       console.error(error);

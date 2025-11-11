@@ -12,7 +12,6 @@ import {
 } from "ai";
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio";
 import { spawn } from "child_process";
-import { checkToolSchemaSize } from "@/lib/toolSize";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -269,12 +268,26 @@ export async function POST(req: Request) {
   6) **Transaction tracking ("Where is my money?")**: Report status of any signed transaction (e.g., pending with Axelar, in CCTP, on destination chain, deposited to pool), including hops and current known location. Cross-chain transactions typically flow: Agoric → Noble (IBC) → Destination EVM chain (CCTP). Present transaction hashes, amounts, timestamps, and block explorer links when available.
   
   **For cross-chain transaction tracking:**
+  CCTP = Cross-Chain Transfer Protocol (Circle's bridge for USDC)
+  GMP = General Message Passing (Axelar's cross-chain messaging)
+  Cross-chain transaction flow context:
+  When users move assets cross-chain via Agoric Orchestration, transactions typically follow this path:
+  Agoric (source) → Noble (via IBC) → Destination EVM chain (via CCTP). Each hop can be tracked
+  independently or as a complete flow. Present transaction details with hashes, amounts, and explorer links.
+
   - Look for tools with "trace", "fetch", or "portfolio" in their names that handle cross-chain flows
   - Prefer tools that provide complete workflows or ordered sequences over individual step tools
-  - If a tool returns a sequence of other tools to execute, follow that sequence in order
+  - If a cross-chain tool returns a sequence of dependent trace tools:
+    - Execute them in order, ensuring continuity of asset identifiers and timestamps
+    - Aggregate the resulting hop data into a unified transaction report
   - For portfolio-based queries, look for tools that can extract addresses from portfolio data
   - For specific hop analysis (Axelar, IBC, CCTP), look for step-specific tools if needed
   - Use the most comprehensive tool available that matches the user's request
+  -If trace data cannot be fully retrieved:
+    - State explicitly which hops were verifiable
+    - Identify data gaps and possible causes (e.g., delayed finality, bridge downtime)
+    - Do not fabricate or estimate missing hashes or times
+
   
   7) **Extensibility**: If asked for a supported-but-different query, use the most relevant YMax tool, state any limits, and return best-effort results grounded in available data.
 
@@ -340,28 +353,6 @@ export async function POST(req: Request) {
     }
   }
 
-  const { exceedsLimit, isNearLimit, estimatedTokens, toolCount } = checkToolSchemaSize(tools);
-
-  if (exceedsLimit) {
-    return new Response(
-      JSON.stringify({
-        error: "Too many tools loaded",
-        message: `The request is too large (${toolCount} tools, ~${Math.round(
-          estimatedTokens / 1000
-        )}k tokens estimated). Try: 
-        1) Disconnecting unused MCP servers 
-        2) Starting a new chat 
-        3) Narrowing your query.`,
-        toolCount,
-        estimatedTokens,
-      }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
-
   // If there was an error setting up MCP clients but we at least have composio tools, continue
   const result = streamText({
     model: model.languageModel(selectedModel),
@@ -415,10 +406,7 @@ export async function POST(req: Request) {
           return "Rate limit exceeded. Please try again later.";
         }
         if (error.message.includes("prompt is too long") || error.message.includes("tokens >")) {
-          return "The request is too large due to too many available tools. Please try: 1) Disconnecting some MCP servers you're not using, 2) Using a shorter conversation history, or 3) Being more specific in your query.";
-        }
-        if (error.message.includes("maximum context length")) {
-          return "The conversation is too long. Please start a new chat or reduce the number of connected MCP servers.";
+          return "The request is too large. Please try starting a new chat.";
         }
       }
       console.error(error);
