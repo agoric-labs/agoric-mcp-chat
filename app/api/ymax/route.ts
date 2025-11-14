@@ -404,7 +404,6 @@ export async function POST(req: Request) {
   });
 
   return result.toUIMessageStreamResponse({
-    sendReasoning: true,
     originalMessages: messages,
     sendReasoning: true, // Enable streaming of reasoning/thinking content
     headers: {
