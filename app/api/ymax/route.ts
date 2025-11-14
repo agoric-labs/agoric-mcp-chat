@@ -250,6 +250,19 @@ export async function POST(req: Request) {
     });
   }
 
+  // Add Anthropic web search and web fetch tools if using Claude model
+  if (selectedModel.startsWith('claude-')) {
+    const webSearchTool = anthropic.tools.webSearch_20250305({
+      maxUses: 5,
+    });
+    const webFetchTool = anthropic.tools.webFetch_20250910({
+      maxUses: 5,
+      maxContentTokens: 5000,
+      citations: { enabled: true },
+    });
+    tools = { ...tools, web_search: webSearchTool, web_fetch: webFetchTool };
+  }
+
   console.log("messages", messages);
   console.log(
     "parts",
