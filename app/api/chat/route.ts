@@ -9,6 +9,7 @@ import { experimental_createMCPClient as createMCPClient, type MCPTransport } fr
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { spawn } from "child_process";
 import { anthropic } from '@ai-sdk/anthropic';
+import { toolSchemas } from "@/lib/mcp/tool-schemas";
 // import { z } from 'zod';
 
 // Allow streaming responses up to 30 seconds
@@ -195,93 +196,9 @@ export async function POST(req: Request) {
       const mcpClient = await createMCPClient({ transport });
       mcpClients.push(mcpClient);
 
-      const mcptools = await mcpClient.tools(
-        // provide these schemas to validate tool inputs 
-    //     {
-    //     schemas: {
-    //   // --- vstorage tool example ---
-    //   'fetch-information-from-vstorage': {
-    //     inputSchema: z.object({
-    //       path: z
-    //         .string()
-    //         .describe(
-    //           "The vstorage path to fetch data from (e.g., 'published.ymax0.portfolios')",
-    //         ),
-    //     }),
-    //   },
-
-    //   // --- Ymax tools ---
-    //   'ymax-get-portfolio-history': {
-    //     inputSchema: z.object({
-    //       portfolioId: z
-    //         .string()
-    //         .describe('Portfolio ID to get portfolio for a specific user'),
-    //       duration: z
-    //         .enum(['4h', '1d', '1w', '1m', '3m', 'all'])
-    //         .optional()
-    //         .describe('Optional time period duration parameter'),
-    //     }),
-    //   },
-
-    //   'ymax-get-portfolio-summary': {
-    //     inputSchema: z.object({
-    //       portfolioId: z
-    //         .string()
-    //         .describe('Portfolio ID to get portfolio summary for a specific user'),
-    //     }),
-    //   },
-
-    //   'ymax-get-all-instruments': {
-    //     inputSchema: z.object({}), // ✅ matches server “no args” tool
-    //   },
-
-    //   'ymax-get-instrument': {
-    //     inputSchema: z.object({
-    //       instrumentId: z
-    //         .string()
-    //         .describe('The ID of the instrument/pool to fetch information for'),
-    //     }),
-    //   },
-
-    //   'ymax-get-optimization-candidates': {
-    //     inputSchema: z.object({
-    //       portfolioId: z
-    //         .string()
-    //         .describe('The ID of the portfolio to get optimization candidates for'),
-    //       mode: z
-    //         .string()
-    //         .optional()
-    //         .describe('Optional mode parameter for optimization candidates'),
-    //     }),
-    //   },
-
-    //   'ymax-get-portfolio-by-wallet': {
-    //     inputSchema: z.object({
-    //       address: z
-    //         .string()
-    //         .describe('The wallet address to get portfolio information for'),
-    //     }),
-    //   },
-
-    //   'ymax-portfolio-activity': {
-    //     inputSchema: z.object({
-    //       portfolioId: z
-    //         .string()
-    //         .describe('Portfolio ID to get activity information for'),
-    //     }),
-    //   },
-
-    //   'ymax-get-portfolio-flow': {
-    //     inputSchema: z.object({
-    //       portfolioId: z
-    //         .string()
-    //         .describe('Portfolio ID to get flow information for'),
-    //       flowId: z.string().describe('Flow ID to get specific flow details'),
-    //     }),
-    //   },
-    // },
-    // }
-    );
+      const mcptools = await mcpClient.tools({
+        schemas: toolSchemas,
+      });
 
       console.log(`MCP tools from ${mcpServer.type} transport:`, Object.keys(mcptools));
       console.log(`MCP response whole:`, mcptools);
