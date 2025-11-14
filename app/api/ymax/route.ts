@@ -12,6 +12,8 @@ import {
 } from "ai";
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio";
 import { spawn } from "child_process";
+import { useContextManager } from "@/lib/hooks/use-context-manager";
+import type { ContextManagerConfig } from "@/lib/context-manager";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -30,6 +32,41 @@ interface MCPServerConfig {
   headers?: KeyValuePair[];
 }
 
+function isContextLimitError(err: any) {
+  const msg = err?.message || err?.toString?.() || "";
+
+  return (
+    msg.includes("context length") ||
+    msg.includes("prompt is too long") ||
+    msg.includes("context window") ||
+    msg.includes("tokens >") ||
+    err?.error?.type === "context_length_exceeded"
+  );
+}
+
+async function restartStreamAfterOverflow(args: any) {
+  const contextResult = await useContextManager(
+    args.messages,
+    {
+      maxTokens: 1000,
+      keepRecentMessages: 4,
+      useContextEditing: true,
+    }
+  );
+
+  const retry = streamText({
+    ...args,
+    messages: contextResult.messages,
+  });
+
+  retry.consumeStream()
+
+  return retry;
+}
+
+
+
+
 export async function POST(req: Request) {
   // Extract context from URL query params
   const url = new URL(req.url);
@@ -41,12 +78,14 @@ export async function POST(req: Request) {
     selectedModel,
     userId,
     mcpServers = [],
+    contextConfig,
   }: {
     messages: UIMessage[];
     chatId?: string;
     selectedModel: modelID;
     userId: string;
     mcpServers?: MCPServerConfig[];
+    contextConfig?: ContextManagerConfig;
   } = await req.json();
 
   if (!userId) {
@@ -220,10 +259,10 @@ export async function POST(req: Request) {
 
       const mcptools = await mcpClient.tools();
 
-      console.log(
-        `MCP tools from ${mcpServer.type} transport:`,
-        Object.keys(mcptools),
-      );
+      // console.log(
+      //   `MCP tools from ${mcpServer.type} transport:`,
+      //   Object.keys(mcptools),
+      // );
 
       // Add MCP tools to tools object
       tools = { ...tools, ...mcptools };
@@ -247,10 +286,27 @@ export async function POST(req: Request) {
     });
   }
 
-  console.log("messages", messages);
+  // console.log("messages", messages);
+  // console.log(
+  //   "parts",
+  //   messages.map((m) => m.parts.map((p) => p)),
+  // );
+
+  // Apply context management to messages
+  const contextResult = await useContextManager(
+    messages,
+    contextConfig || {
+      maxTokens: 1_000,
+      keepRecentMessages: 4,
+      useSkills: false,
+      useContextEditing: false, // Disable context editing for now due to tool invocation issues
+    },
+  );
+
+  const managedMessages = contextResult.messages;
+
   console.log(
-    "parts",
-    messages.map((m) => m.parts.map((p) => p)),
+    `[Context Management] Applied: ${contextResult.wasSummarized ? "Yes" : "No"}, Method: ${contextResult.method || "none"}, Tokens saved: ${contextResult.tokensSaved}`
   );
 
   // Use the Max AI system prompt
@@ -360,64 +416,136 @@ export async function POST(req: Request) {
     }
   }
 
-  // If there was an error setting up MCP clients but we at least have composio tools, continue
-  const result = streamText({
+   const args = {
     model: model.languageModel(selectedModel),
     system: finalSystemPrompt,
-    messages,
+    messages: managedMessages,
     tools,
     maxSteps: 20,
     providerOptions: {
-      google: {
-        thinkingConfig: {
-          thinkingBudget: 2048,
-        },
-      },
-      anthropic: {
-        thinking: {
-          type: "enabled",
-          budgetTokens: 12000,
-        },
-      },
+      google: { thinkingConfig: { thinkingBudget: 2048 } },
+      anthropic: { thinking: { type: "enabled", budgetTokens: 12000 } },
     },
-    onError: (error) => {
-      console.error(JSON.stringify(error, null, 2));
+    onError: async (err: any) => {
+      if (!isContextLimitError(err)) return;
+
+      console.warn("[Overflow] Restarting stream with compacted context…");
+
+      activeStream.controller.abort();
+
+      activeStream = await restartStreamAfterOverflow(args);
     },
+
     async onFinish({ response }) {
       const allMessages = appendResponseMessages({
         messages,
         responseMessages: response.messages,
       });
-
-      // await saveChat({
-      //   id,
-      //   userId,
-      //   messages: allMessages,
-      // });
-
-      // const dbMessages = convertToDBMessages(allMessages, id);
-      // await saveMessages({ messages: dbMessages });
-      // close all mcp clients
-      // for (const client of mcpClients) {
-      //   await client.close();
-      // }
+      // Save messages if needed
     },
-  });
+  };
 
-  result.consumeStream();
-  return result.toDataStreamResponse({
+  let activeStream = streamText(args);
+  activeStream.consumeStream();
+
+  return activeStream.toDataStreamResponse({
     sendReasoning: true,
-    getErrorMessage: (error) => {
-      if (error instanceof Error) {
-        if (error.message.includes("Rate limit")) {
-          return "Rate limit exceeded. Please try again later.";
-        }
-        if (error.message.includes("prompt is too long") || error.message.includes("tokens >")) {
-          return "The request is too large. Please try starting a new chat.";
-        }
+    getErrorMessage: (err) => {
+      if (err instanceof Error) {
+        if (err.message.includes("Rate limit")) return "Rate limit exceeded.";
+        if (isContextLimitError(err))
+          return "The conversation grew too large. Please retry.";
       }
-      console.error(error);
       return "An error occurred.";
     },
   });
+
+  // If there was an error setting up MCP clients but we at least have composio tools, continue
+  // const result = streamText({
+  //   model: model.languageModel(selectedModel),
+  //   system: finalSystemPrompt,
+  //   messages: managedMessages,
+  //   tools,
+  //   maxSteps: 20,
+  //   providerOptions: {
+  //     google: {
+  //       thinkingConfig: {
+  //         thinkingBudget: 2048,
+  //       },
+  //     },
+  //     anthropic: {
+  //       thinking: {
+  //         type: "enabled",
+  //         budgetTokens: 12000,
+  //       },
+  //     },
+  //   },
+  //   onError: async (error) => {
+  //     console.error(JSON.stringify(error, null, 2));
+  //     if (!isContextLimitError(error)) return;
+
+  //     console.warn("[Overflow] Mid-stream -> restarting with summarization…");
+
+  //     result.controller.abort?.();
+
+  //     const retry = await restartStreamAfterOverflow({
+  //   model: model.languageModel(selectedModel),
+  //   system: finalSystemPrompt,
+  //   messages: managedMessages,
+  //   tools,
+  //   maxSteps: 20,
+  //   providerOptions: {
+  //     google: {
+  //       thinkingConfig: {
+  //         thinkingBudget: 2048,
+  //       },
+  //     },
+  //     anthropic: {
+  //       thinking: {
+  //         type: "enabled",
+  //         budgetTokens: 12000,
+  //       },
+  //     },
+  //   }});
+
+  //     return retry;
+
+  //   },
+  //   async onFinish({ response }) {
+  //     const allMessages = appendResponseMessages({
+  //       messages,
+  //       responseMessages: response.messages,
+  //     });
+
+  //     // await saveChat({
+  //     //   id,
+  //     //   userId,
+  //     //   messages: allMessages,
+  //     // });
+
+  //     // const dbMessages = convertToDBMessages(allMessages, id);
+  //     // await saveMessages({ messages: dbMessages });
+  //     // close all mcp clients
+  //     // for (const client of mcpClients) {
+  //     //   await client.close();
+  //     // }
+  //   },
+  // });
+
+  // result.consumeStream();
+  // return result.toDataStreamResponse({
+  //   sendReasoning: true,
+  //   getErrorMessage: (error) => {
+  //     if (error instanceof Error) {
+  //       if (error.message.includes("Rate limit")) {
+  //         return "Rate limit exceeded. Please try again later.";
+  //       }
+  //       if (error.message.includes("prompt is too long") || error.message.includes("tokens >")) {
+  //         return "The request is too large. Please try starting a new chat.";
+  //       }
+  //     }
+  //     console.error(error);
+  //     return "An error occurred.";
+  //   },
+  // });
 }
