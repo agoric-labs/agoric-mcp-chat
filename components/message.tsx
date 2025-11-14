@@ -21,8 +21,8 @@ const cleanDisplayText = (text: string): string => {
 
 interface ReasoningPart {
   type: "reasoning";
-  reasoning: string;
-  details: Array<{ type: "text"; text: string }>;
+  text: string; // AI SDK v5 uses 'text' not 'reasoning'
+  state?: "streaming" | "done"; // Track streaming state
 }
 
 interface ReasoningMessagePartProps {
@@ -116,21 +116,9 @@ export function ReasoningMessagePart({
             <div className="text-xs text-muted-foreground/70 pl-1 font-medium">
               The assistant&apos;s thought process:
             </div>
-            {part.details && Array.isArray(part.details) ? (
-              part.details.map((detail, detailIndex) =>
-                detail.type === "text" ? (
-                  <div key={detailIndex} className="px-2 py-1.5 bg-muted/10 rounded-md border border-border/30">
-                    <Markdown>{detail.text}</Markdown>
-                  </div>
-                ) : (
-                  <span key={detailIndex}>&lt;redacted&gt;</span>
-                ),
-              )
-            ) : (
-              <div className="px-2 py-1.5 bg-muted/10 rounded-md border border-border/30">
-                <Markdown>{part.reasoning || "Thinking..."}</Markdown>
-              </div>
-            )}
+            <div className="px-2 py-1.5 bg-muted/10 rounded-md border border-border/30">
+              <Markdown>{part.text || "Thinking..."}</Markdown>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -151,6 +139,7 @@ const PurePreviewMessage = ({
   const searchParams = useSearchParams();
   const hideTools = searchParams.get("hideTools") === "true";
   const hideReasoning = searchParams.get("hideReasoning") === "true";
+
   // Create a string with all text parts for copy functionality
   const getMessageText = () => {
     if (!message.parts) return "";
@@ -236,18 +225,19 @@ const PurePreviewMessage = ({
               switch (part.type) {
                 case "reasoning":
                   if (hideReasoning) return null;
-                  
+
+                  // Check if this specific reasoning part is currently streaming
+                  const reasoningPart = part as any;
+                  const isReasoningStreaming =
+                    isLatestMessage &&
+                    status === "streaming" &&
+                    reasoningPart.state === "streaming";
+
                   return (
                     <ReasoningMessagePart
                       key={`message-${message.id}-${i}`}
-                      // @ts-expect-error part
-                      part={part}
-                      isReasoning={
-                        (message.parts &&
-                          status === "streaming" &&
-                          i === message.parts.length - 1) ??
-                        false
-                      }
+                      part={part as ReasoningPart}
+                      isReasoning={isReasoningStreaming}
                     />
                   );
                 default:
@@ -267,7 +257,17 @@ const PurePreviewMessage = ({
 };
 
 export const Message = memo(PurePreviewMessage, (prevProps, nextProps) => {
+  // Always re-render if status changed
   if (prevProps.status !== nextProps.status) return false;
+
+  // Always re-render if this is the latest message and we're streaming
+  if (nextProps.isLatestMessage && nextProps.status === "streaming") return false;
+
+  // Check if message parts changed
   if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
+
+  // Check if isLatestMessage prop changed
+  if (prevProps.isLatestMessage !== nextProps.isLatestMessage) return false;
+
   return true;
 });
