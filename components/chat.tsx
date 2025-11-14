@@ -124,7 +124,7 @@ function ChatContent() {
         };
       },
     }),
-    experimental_throttle: 500,
+    experimental_throttle: 50, // Lower throttle for smoother streaming (50ms)
     onFinish: () => {
       // Invalidate the chats query to refresh the sidebar
       if (userId) {
