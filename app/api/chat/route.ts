@@ -8,9 +8,7 @@ import { eq, and } from 'drizzle-orm';
 import { experimental_createMCPClient as createMCPClient, type MCPTransport } from '@ai-sdk/mcp';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { spawn } from "child_process";
-import { anthropic } from '@ai-sdk/anthropic';
 import { toolSchemas } from "@/lib/mcp/tool-schemas";
-// import { z } from 'zod';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -118,12 +116,10 @@ export async function POST(req: Request) {
         // Make a test request to check status before actual connection
         console.log('Making test request to URL:', mcpServer.url);
         fetch(mcpServer.url, {
-          // method: 'GET', // To get the whole response
           method: 'HEAD',
           headers: transport.headers
         })
         .then(response => {
-          // console.log('MCP server response: ', response);
           console.log('Test request response status:', response.status, response.statusText);
           console.log('Test request response headers:', Object.fromEntries(response.headers.entries()));
         })
