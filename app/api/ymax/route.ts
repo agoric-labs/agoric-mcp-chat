@@ -12,6 +12,7 @@ import {
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { spawn } from "child_process";
 import { anthropic } from '@ai-sdk/anthropic';
+import { toolSchemas } from "@/lib/mcp/tool-schemas";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -218,7 +219,9 @@ export async function POST(req: Request) {
       const mcpClient = await createMCPClient({ transport });
       mcpClients.push(mcpClient);
 
-      const mcptools = await mcpClient.tools();
+      const mcptools = await mcpClient.tools({
+        schemas: toolSchemas,
+      });
 
       console.log(
         `MCP tools from ${mcpServer.type} transport:`,
