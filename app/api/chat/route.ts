@@ -197,7 +197,6 @@ export async function POST(req: Request) {
       });
 
       console.log(`MCP tools from ${mcpServer.type} transport:`, Object.keys(mcptools));
-      console.log(`MCP response whole:`, mcptools);
 
       // Add MCP tools to tools object
       tools = { ...tools, ...mcptools };
