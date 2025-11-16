@@ -1,4 +1,4 @@
-import { streamText, generateText, type CoreMessage } from "ai";
+import { generateText, type CoreMessage } from "ai";
 import { getApiKey, model } from "@/ai/providers";
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -14,17 +14,15 @@ export function estimateTokens(content: string | CoreMessage[]): number {
 export interface ContextManagerConfig {
   maxTokens?: number;
   keepRecentMessages?: number;
-  useSkills?: boolean;
   useContextEditing?: boolean;
   debug?: boolean;
   contextEditConfig?: ContextEditingOptions;
 }
 
 export const DEFAULT_CONTEXT_CONFIG: Required<Omit<ContextManagerConfig, 'contextEditConfig'>> = {
-  maxTokens: 150_000,
+  maxTokens: 120_000,
   keepRecentMessages: 8,
-  useSkills: false,
-  useContextEditing: false,
+  useContextEditing: true,
   debug: false,
 };
 
@@ -34,18 +32,18 @@ export interface ContextManagerResult {
   originalTokens: number;
   newTokens: number;
   tokensSaved: number;
-  method?: "skills" | "api" | "context-editing" | "none";
+  method?: "api" | "context-editing" | "none";
 }
 
 export interface ContextEditingOptions {
   clearThinking?: {
     enabled?: boolean;
-    keepThinkingTurns?: number; // default: 2
+    keepThinkingTurns?: number;
   };
   clearToolUses?: {
     enabled?: boolean;
-    triggerInputTokens?: number; // default: 50k
-    keepToolUses?: number; // default: 5
+    triggerInputTokens?: number;
+    keepToolUses?: number;
     clearAtLeastTokens?: number;
     excludeTools?: string[];
   };
@@ -60,30 +58,7 @@ function formatMessageForSummary(msg: CoreMessage): string {
   return `${msg.role.toUpperCase()}: ${content.slice(0, 300)}`;
 }
 
-/**
- * METHOD 1: Skills-based Summarization
- * 
- * How it works:
- * - Uses streamText with agent capabilities (maxSteps: 3)
- * - The AI can use tools and multi-step reasoning to create a better summary
- * - More intelligent but slower and uses more tokens
- * 
- * Best for: Complex conversations with lots of tool usage and context dependencies
- */
-async function summarizeWithSkills(messages: CoreMessage[]): Promise<string> {
-   throw Error("Not implemented yet");
-}
 
-/**
- * METHOD 2: Direct API Summarization (Default)
- * 
- * How it works:
- * - Uses generateText for a single-shot summary
- * - Simple prompt asking AI to compress the conversation
- * - Fast and cost-effective
- * 
- * Best for: Most use cases, good balance of speed, quality, and cost
- */
 async function summarizeWithDirectAPI(messages: CoreMessage[]): Promise<string> {
   const conversation = messages.map(formatMessageForSummary).join("\n");
 
@@ -91,19 +66,7 @@ async function summarizeWithDirectAPI(messages: CoreMessage[]): Promise<string> 
     model: model.languageModel("claude-4-5-sonnet"),
     temperature: 0.3,
     maxTokens: 2000,
-    system: `You are an expert conversation summarizer specialized in DeFi and blockchain contexts.
-
-Your task: produce a **concise narrative summary** of chat histories with minimal tokens and maximum information density.
-
-Claude best practices:
-- Be explicit and organized.
-- Show reasoning flow and tool usage.
-- Avoid filler or repetition.
-- Output should read like a coherent debrief.
-
-### STRUCTURE
-Context → Actions → Outcomes → Current State
-`,
+    system: `Summarize this DeFi conversation concisely. Focus on: user goals, key data/results, current portfolio state, and next actions. Avoid repetition.`,
     messages: [
       {
         role: "user",
@@ -115,17 +78,6 @@ Context → Actions → Outcomes → Current State
   return `[CONVERSATION SUMMARY - ${messages.length} messages compacted]\n${result.text.trim()}\n[END SUMMARY]`;
 }
 
-/**
- * METHOD 3: Anthropic Context Editing API
- * 
- * How it works:
- * - Uses Anthropic's beta context management API
- * - Automatically removes thinking blocks and old tool calls
- * - No manual summarization needed - Claude does it internally
- * - Keeps last 2 thinking turns and 5 most recent tool uses
- * 
- * Best for: Anthropic models only, most efficient but requires beta API access
- */
 export async function summarizeWithContextEditing(
   messages: CoreMessage[],
   options: ContextEditingOptions = {}
@@ -139,7 +91,7 @@ export async function summarizeWithContextEditing(
   const clearToolUses = {
     enabled: options.clearToolUses?.enabled ?? true,
     triggerInputTokens: options.clearToolUses?.triggerInputTokens ?? 50_000,
-    keepToolUses: options.clearToolUses?.keepToolUses ?? 3,
+    keepToolUses: options.clearToolUses?.keepToolUses ?? 5,
     clearAtLeastTokens: options.clearToolUses?.clearAtLeastTokens, // Optional, no default
     excludeTools: options.clearToolUses?.excludeTools,
   };
@@ -182,12 +134,9 @@ export async function summarizeWithContextEditing(
       keep: { type: "tool_uses", value: clearToolUses.keepToolUses ?? 5 },
     };
 
-    // Optional: minimum tokens to clear
     if (clearToolUses.clearAtLeastTokens) {
       toolEdit.clear_at_least = { type: "tokens", value: clearToolUses.clearAtLeastTokens };
     }
-
-    // Optional: exclude specific tools from clearing
     if (clearToolUses.excludeTools?.length) {
       toolEdit.exclude = { tools: clearToolUses.excludeTools };
     }
@@ -216,12 +165,8 @@ export async function summarizeWithContextEditing(
       context_management: { edits },
     };
 
-    // Enable thinking if clear_thinking strategy is used
     if (clearThinking.enabled) {
-      requestParams.thinking = {
-        type: "enabled",
-        budget_tokens: 1024,
-      };
+      requestParams.thinking = { type: "enabled", budget_tokens: 1024 };
     }
 
     await client.beta.messages.create(requestParams);
@@ -255,37 +200,18 @@ export async function summarizeWithContextEditing(
 }
 
 
-/**
- * Main Context Manager
- * 
- * Manages conversation context by reducing token count when it exceeds limits.
- * 
- * Strategy Selection:
- * - useContextEditing=true → Method 3 (Anthropic API, most efficient)
- * - useSkills=true → Method 1 (Agent-based, most intelligent)
- * - default → Method 2 (Direct API, best balance)
- * 
- * Decision Flow:
- * 1. If tokens < maxTokens → do nothing
- * 2. If useContextEditing → use Anthropic's context editing API
- * 3. Otherwise → summarize old messages, keep recent ones
- * 4. Need at least 3 old messages to summarize (otherwise overhead > savings)
- */
 export async function manageContext(
   messages: CoreMessage[],
   config: ContextManagerConfig = {}
 ): Promise<ContextManagerResult> {
-  // Merge user config with defaults
   const maxTokens = config.maxTokens ?? DEFAULT_CONTEXT_CONFIG.maxTokens;
   const keepRecentMessages = config.keepRecentMessages ?? DEFAULT_CONTEXT_CONFIG.keepRecentMessages;
-  const useSkills = config.useSkills ?? DEFAULT_CONTEXT_CONFIG.useSkills;
   const useContextEditing = config.useContextEditing ?? DEFAULT_CONTEXT_CONFIG.useContextEditing;
   const contextEditConfig = config.contextEditConfig;
 
   const originalTokens = estimateTokens(messages);
   console.log(`Token count: ${originalTokens}/${maxTokens}`);
 
-  // Skip if within limit
   if (originalTokens < maxTokens) {
     return {
       messages,
@@ -300,15 +226,13 @@ export async function manageContext(
   console.log(`Exceeded threshold (${originalTokens} > ${maxTokens})`);
 
   if (useContextEditing) {
-    console.log("context editing");
     const { messages: editedMessages, tokensSaved } =
       await summarizeWithContextEditing(messages, contextEditConfig);
-    const newTokens = estimateTokens(editedMessages);
     return {
       messages: editedMessages,
       wasSummarized: true,
       originalTokens,
-      newTokens,
+      newTokens: estimateTokens(editedMessages),
       tokensSaved,
       method: "context-editing",
     };
@@ -330,17 +254,8 @@ export async function manageContext(
     };
   }
 
-  console.log(
-    `Summarizing ${oldMessages.length} old messages with ${useSkills ? "skills" : "api"}...`
-  );
-
-  const summaryText = useSkills
-    ? await summarizeWithSkills(oldMessages)
-    : await summarizeWithDirectAPI(oldMessages);
-
-  console.log("\n=== SUMMARY ===");
-  console.log(summaryText);
-  console.log("================\n");
+  console.log(`Summarizing ${oldMessages.length} old messages...`);
+  const summaryText = await summarizeWithDirectAPI(oldMessages);
 
   const summaryMessage: CoreMessage = { role: "system", content: summaryText };
   const newMessages = [summaryMessage, ...recentMessages];
@@ -355,6 +270,6 @@ export async function manageContext(
     originalTokens,
     newTokens,
     tokensSaved,
-    method: useSkills ? "skills" : "api",
+    method: "api",
   };
 }

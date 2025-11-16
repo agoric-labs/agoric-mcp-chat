@@ -44,24 +44,52 @@ function isContextLimitError(err: any) {
   );
 }
 
-async function restartStreamAfterOverflow(args: any) {
-  const contextResult = await useContextManager(
-    args.messages,
-    {
-      maxTokens: 1000,
-      keepRecentMessages: 4,
-      useContextEditing: true,
+async function restartStreamAfterOverflow(args: any, attempt = 1): Promise<any> {
+  const maxAttempts = 3;
+  const configs = [
+    { maxTokens: 80_000, keepRecentMessages: 6, useContextEditing: true },
+    { maxTokens: 50_000, keepRecentMessages: 4, useContextEditing: true },
+    { maxTokens: 30_000, keepRecentMessages: 3, useContextEditing: false }, // Fallback to summarization
+  ];
+
+  try {
+    console.log(`[Recovery] Attempt ${attempt}/${maxAttempts}, tokens: ${configs[attempt - 1].maxTokens}`);
+    
+    const contextResult = await useContextManager(args.messages, configs[attempt - 1]);
+    
+    const retry = streamText({
+      ...args,
+      messages: contextResult.messages,
+    });
+
+    retry.consumeStream();
+    return retry;
+    
+  } catch (error) {
+    console.error(`[Recovery] Attempt ${attempt} failed:`, error);
+    
+    if (attempt < maxAttempts && isContextLimitError(error)) {
+      return restartStreamAfterOverflow(args, attempt + 1);
     }
-  );
-
-  const retry = streamText({
-    ...args,
-    messages: contextResult.messages,
-  });
-
-  retry.consumeStream()
-
-  return retry;
+    
+    // Final fallback: minimal context
+    if (attempt === maxAttempts) {
+      console.warn("[Recovery] Final fallback: using minimal context");
+      const minimalMessages = [
+        args.messages.find((m: any) => m.role === 'system'),
+        ...args.messages.slice(-2)
+      ].filter(Boolean);
+      
+      const retry = streamText({
+        ...args,
+        messages: minimalMessages,
+      });
+      retry.consumeStream();
+      return retry;
+    }
+    
+    throw error;
+  }
 }
 
 
@@ -292,14 +320,12 @@ export async function POST(req: Request) {
   //   messages.map((m) => m.parts.map((p) => p)),
   // );
 
-  // Apply context management to messages
   const contextResult = await useContextManager(
     messages,
     contextConfig || {
-      maxTokens: 1_000,
-      keepRecentMessages: 4,
-      useSkills: false,
-      useContextEditing: false, // Disable context editing for now due to tool invocation issues
+      maxTokens: 120_000,
+      keepRecentMessages: 8,
+      useContextEditing: true,
     },
   );
 
@@ -427,13 +453,23 @@ export async function POST(req: Request) {
       anthropic: { thinking: { type: "enabled", budgetTokens: 12000 } },
     },
     onError: async (err: any) => {
-      if (!isContextLimitError(err)) return;
+      if (!isContextLimitError(err)) {
+        console.error("[Stream Error] Non-context error:", err);
+        return;
+      }
 
-      console.warn("[Overflow] Restarting stream with compacted context…");
-
-      activeStream.controller.abort();
-
-      activeStream = await restartStreamAfterOverflow(args);
+      console.warn("[Context Overflow] Attempting recovery...");
+      
+      try {
+        if (activeStream.controller?.abort) {
+          activeStream.controller.abort();
+        }
+        activeStream = await restartStreamAfterOverflow(args);
+      } catch (retryErr) {
+        console.error("[Context Overflow] All recovery attempts failed:", retryErr);
+        // Don't throw - let the stream handle the error gracefully
+        return;
+      }
     },
 
     async onFinish({ response }) {
@@ -453,99 +489,10 @@ export async function POST(req: Request) {
     getErrorMessage: (err) => {
       if (err instanceof Error) {
         if (err.message.includes("Rate limit")) return "Rate limit exceeded.";
-        if (isContextLimitError(err))
-          return "The conversation grew too large. Please retry.";
+        if (isContextLimitError(err)) return "Conversation too large. Context has been reduced.";
       }
       return "An error occurred.";
     },
   });
 
-  // If there was an error setting up MCP clients but we at least have composio tools, continue
-  // const result = streamText({
-  //   model: model.languageModel(selectedModel),
-  //   system: finalSystemPrompt,
-  //   messages: managedMessages,
-  //   tools,
-  //   maxSteps: 20,
-  //   providerOptions: {
-  //     google: {
-  //       thinkingConfig: {
-  //         thinkingBudget: 2048,
-  //       },
-  //     },
-  //     anthropic: {
-  //       thinking: {
-  //         type: "enabled",
-  //         budgetTokens: 12000,
-  //       },
-  //     },
-  //   },
-  //   onError: async (error) => {
-  //     console.error(JSON.stringify(error, null, 2));
-  //     if (!isContextLimitError(error)) return;
-
-  //     console.warn("[Overflow] Mid-stream -> restarting with summarization…");
-
-  //     result.controller.abort?.();
-
-  //     const retry = await restartStreamAfterOverflow({
-  //   model: model.languageModel(selectedModel),
-  //   system: finalSystemPrompt,
-  //   messages: managedMessages,
-  //   tools,
-  //   maxSteps: 20,
-  //   providerOptions: {
-  //     google: {
-  //       thinkingConfig: {
-  //         thinkingBudget: 2048,
-  //       },
-  //     },
-  //     anthropic: {
-  //       thinking: {
-  //         type: "enabled",
-  //         budgetTokens: 12000,
-  //       },
-  //     },
-  //   }});
-
-  //     return retry;
-
-  //   },
-  //   async onFinish({ response }) {
-  //     const allMessages = appendResponseMessages({
-  //       messages,
-  //       responseMessages: response.messages,
-  //     });
-
-  //     // await saveChat({
-  //     //   id,
-  //     //   userId,
-  //     //   messages: allMessages,
-  //     // });
-
-  //     // const dbMessages = convertToDBMessages(allMessages, id);
-  //     // await saveMessages({ messages: dbMessages });
-  //     // close all mcp clients
-  //     // for (const client of mcpClients) {
-  //     //   await client.close();
-  //     // }
-  //   },
-  // });
-
-  // result.consumeStream();
-  // return result.toDataStreamResponse({
-  //   sendReasoning: true,
-  //   getErrorMessage: (error) => {
-  //     if (error instanceof Error) {
-  //       if (error.message.includes("Rate limit")) {
-  //         return "Rate limit exceeded. Please try again later.";
-  //       }
-  //       if (error.message.includes("prompt is too long") || error.message.includes("tokens >")) {
-  //         return "The request is too large. Please try starting a new chat.";
-  //       }
-  //     }
-  //     console.error(error);
-  //     return "An error occurred.";
-  //   },
-  // });
 }

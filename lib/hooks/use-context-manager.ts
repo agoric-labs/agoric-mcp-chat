@@ -6,22 +6,12 @@ import {
   type ContextManagerResult,
 } from "../context-manager";
 
-/**
- * Filter out incomplete tool invocations (calls without results)
- * This prevents AI_MessageConversionError when passing messages to streamText
- */
-function filterIncompleteToolCalls(messages: any[]): any[] {
+function cleanupToolInvocations(messages: any[]): any[] {
   return messages.map((msg) => {
-    if (!msg.toolInvocations || !Array.isArray(msg.toolInvocations)) {
-      return msg;
-    }
-
-    const toolInvocations = msg.toolInvocations;
+    if (!msg.toolInvocations?.length) return msg;
     
-    const completeInvocations = toolInvocations.filter(
-      (inv: any) => {
-        return inv.state === "result" || (inv.state !== "call" && inv.result !== undefined);
-      }
+    const completeInvocations = msg.toolInvocations.filter(
+      (inv: any) => inv.state === "result" || inv.result !== undefined
     );
 
     if (completeInvocations.length === 0) {
@@ -29,15 +19,9 @@ function filterIncompleteToolCalls(messages: any[]): any[] {
       return rest;
     }
 
-    if (completeInvocations.length < toolInvocations.length) {
-      return {
-        ...msg,
-        toolInvocations: completeInvocations,
-      };
-    }
-
-    // All invocations are complete, return as-is
-    return msg;
+    return completeInvocations.length < msg.toolInvocations.length
+      ? { ...msg, toolInvocations: completeInvocations }
+      : msg;
   });
 }
 
@@ -57,19 +41,13 @@ export async function useContextManager(
   }
 
   const result = await manageContext(messages, config);
-
-  // Filter out incomplete tool calls from managed messages
-  const cleanedMessages = filterIncompleteToolCalls(result.messages);
+  const cleanedMessages = cleanupToolInvocations(result.messages);
+  const newTokens = estimateTokens(cleanedMessages);
 
   return {
     ...result,
     messages: cleanedMessages,
-    originalTokens: result.originalTokens,
-    newTokens: estimateTokens(cleanedMessages),
-    tokensSaved:
-      result.tokensSaved ||
-      (result.originalTokens) -
-        estimateTokens(cleanedMessages),
-    method: result.method || "none",
+    newTokens,
+    tokensSaved: result.originalTokens - newTokens,
   };
 }
