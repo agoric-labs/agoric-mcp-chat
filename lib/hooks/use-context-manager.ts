@@ -8,22 +8,27 @@ import {
 
 function cleanupToolInvocations(messages: any[]): any[] {
   return messages.map((msg) => {
-    if (!msg.toolInvocations?.length) return msg;
-    
-    const completeInvocations = msg.toolInvocations.filter(
-      (inv: any) => inv.state === "result" || inv.result !== undefined
-    );
+    const invocations = msg.toolInvocations;
 
-    if (completeInvocations.length === 0) {
-      const { toolInvocations: _, ...rest } = msg;
+    if (!Array.isArray(invocations) || invocations.length === 0) {
+      return msg;
+    }
+
+    const completed = invocations.filter(inv => inv.result !== undefined);
+
+    if (completed.length === 0) {
+      const { toolInvocations, ...rest } = msg;
       return rest;
     }
 
-    return completeInvocations.length < msg.toolInvocations.length
-      ? { ...msg, toolInvocations: completeInvocations }
-      : msg;
+    if (completed.length < invocations.length) {
+      return { ...msg, toolInvocations: completed };
+    }
+
+    return msg;
   });
 }
+
 
 export async function useContextManager(
   messages: CoreMessage[] = [],
@@ -40,14 +45,9 @@ export async function useContextManager(
     };
   }
 
-  const result = await manageContext(messages, config);
-  const cleanedMessages = cleanupToolInvocations(result.messages);
-  const newTokens = estimateTokens(cleanedMessages);
+  const cleanedMessages = cleanupToolInvocations(messages);
+  
+  const result = await manageContext(cleanedMessages, config);
 
-  return {
-    ...result,
-    messages: cleanedMessages,
-    newTokens,
-    tokensSaved: result.originalTokens - newTokens,
-  };
+  return result;
 }

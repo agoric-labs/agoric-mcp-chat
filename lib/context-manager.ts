@@ -90,13 +90,12 @@ export async function summarizeWithContextEditing(
   
   const clearToolUses = {
     enabled: options.clearToolUses?.enabled ?? true,
-    triggerInputTokens: options.clearToolUses?.triggerInputTokens ?? 50_000,
-    keepToolUses: options.clearToolUses?.keepToolUses ?? 5,
-    clearAtLeastTokens: options.clearToolUses?.clearAtLeastTokens, // Optional, no default
+    triggerInputTokens: options.clearToolUses?.triggerInputTokens ?? 30_000,  
+    keepToolUses: options.clearToolUses?.keepToolUses ?? 3, 
+    clearAtLeastTokens: options.clearToolUses?.clearAtLeastTokens ?? 20_000,
     excludeTools: options.clearToolUses?.excludeTools,
   };
   
-  const debug = options.debug ?? false;
 
   const apiKey = getApiKey("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY for context editing");
@@ -135,24 +134,13 @@ export async function summarizeWithContextEditing(
     };
 
     if (clearToolUses.clearAtLeastTokens) {
-      toolEdit.clear_at_least = { type: "tokens", value: clearToolUses.clearAtLeastTokens };
+      toolEdit.clear_at_least = { type: "input_tokens", value: clearToolUses.clearAtLeastTokens };
     }
     if (clearToolUses.excludeTools?.length) {
       toolEdit.exclude = { tools: clearToolUses.excludeTools };
     }
 
     edits.push(toolEdit);
-  }
-
-  if (debug) {
-    console.log("[ContextEditing] Invoking Anthropic Context Management...");
-    console.table(
-      edits.map((e) => ({
-        Strategy: e.type,
-        Trigger: e.trigger?.value || "-",
-        Keep: JSON.stringify(e.keep),
-      }))
-    );
   }
 
   try {
@@ -169,33 +157,53 @@ export async function summarizeWithContextEditing(
       requestParams.thinking = { type: "enabled", budget_tokens: 1024 };
     }
 
-    await client.beta.messages.create(requestParams);
+    const response = await client.beta.messages.create(requestParams);
+    console.log("Context edited:", JSON.stringify(response.context_management, null, 2));
 
-    const editedMessages: CoreMessage[] = systemMessage
-      ? [systemMessage, ...anthropicMessages]
-      : anthropicMessages;
+    const appliedEdits = response.context_management?.applied_edits || [];
 
-    const originalTokens = estimateTokens(messages);
-    const newTokens = estimateTokens(editedMessages);
-
-    if (debug) {
-      console.log(
-        `[ContextEditing] Success: ${originalTokens} → ${newTokens} (saved ${
-          originalTokens - newTokens
-        })`
-      );
+    if (appliedEdits.length === 0) {
+      console.log("[ContextEditing] No edits applied");
+      throw new Error("Context editing failed - no edits applied");
     }
 
+    const editedMessages = response.messages || anthropicMessages;
+    const coreMessages: CoreMessage[] = systemMessage
+      ? [systemMessage, ...editedMessages.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content
+        }))]
+      : editedMessages.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content
+        }));
+
+    const originalTokens = estimateTokens(messages);
+    const newTokens = estimateTokens(coreMessages);
+
     return {
-      messages: editedMessages,
+      messages: coreMessages,
       tokensSaved: originalTokens - newTokens,
     };
   } catch (err) {
-    console.error("[ContextEditing] Failed, fallback to manual pruning:", err);
-    const pruned = messages.slice(-20);
-    const tokensSaved = estimateTokens(messages) - estimateTokens(pruned);
-    if (debug) console.warn(`[ContextEditing] Fallback applied. Saved ${tokensSaved} tokens.`);
-    return { messages: pruned, tokensSaved };
+    console.error("[ContextEditing] Failed, falling back to direct summarization:", err);
+    
+    const keepRecentMessages = 8;
+    const splitPoint = Math.max(0, messages.length - keepRecentMessages);
+    const oldMessages = messages.slice(0, splitPoint);
+    const recentMessages = messages.slice(splitPoint);
+    
+    if (oldMessages.length < 3) {
+      return { messages: recentMessages, tokensSaved: 0 };
+    }
+    
+    const summaryText = await summarizeWithDirectAPI(oldMessages);
+    const summaryMessage: CoreMessage = { role: "system", content: summaryText };
+    console.log("Summary:", summaryText);
+    const finalMessages = [summaryMessage, ...recentMessages];
+    const tokensSaved = estimateTokens(messages) - estimateTokens(finalMessages);
+    
+    return { messages: finalMessages, tokensSaved };
   }
 }
 
@@ -227,7 +235,9 @@ export async function manageContext(
 
   if (useContextEditing) {
     const { messages: editedMessages, tokensSaved } =
-      await summarizeWithContextEditing(messages, contextEditConfig);
+      await summarizeWithContextEditing(messages, { 
+        ...contextEditConfig, 
+      });
     return {
       messages: editedMessages,
       wasSummarized: true,
