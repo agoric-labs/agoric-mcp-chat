@@ -1,3 +1,9 @@
+/**
+ * Tool schemas sourced from agoric-mcp
+ * 
+ * TODO: This duplication is temporary and will be removed once the different
+ * repositories are merged into a monorepo structure.
+ */
 import { z } from "zod";
 
 const chainSchema_staking = z.union([z.literal("osmosis"), z.literal("noble")]).describe("Chain name");

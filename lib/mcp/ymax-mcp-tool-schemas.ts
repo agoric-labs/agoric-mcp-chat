@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+/**
+ * Tool schemas sourced from ymax-mcp-server
+ *
+ * TODO: This duplication is temporary and will be removed once the different
+ * repositories are merged into a monorepo structure.
+ */
 export const ymaxMcptoolSchemas = {
     // --- vstorage tool example ---
     'fetch-information-from-vstorage': {

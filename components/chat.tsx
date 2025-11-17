@@ -88,14 +88,14 @@ function ChatContent() {
   // Check params to determine which API to use
   const useAgoricWebsiteMCP = searchParams.get("useAgoricWebsiteMCP");
   const theme = searchParams.get("theme");
-  
+
   let apiBase = "/api/chat"; // default
   if (useAgoricWebsiteMCP) {
     apiBase = "/api/support";
   } else if (theme === "ymax") {
     apiBase = "/api/ymax";
   }
-  
+
   const apiUrl = newParams.toString()
     ? `${apiBase}?${newParams.toString()}`
     : apiBase;
@@ -152,7 +152,6 @@ function ChatContent() {
 
       if (!input.trim()) return;
 
-      // Submit the message first
       sendMessage({ text: input });
       setInput('');
 
@@ -162,7 +161,6 @@ function ChatContent() {
         const searchParams = new URLSearchParams(window.location.search);
         const queryString = searchParams.toString();
         const queryQuery = queryString ? `?${queryString}` : "";
-        // Use replace instead of push to update URL without triggering navigation
         window.history.replaceState({}, '', `/chat/${generatedChatId}${queryQuery}`);
       }
     },
@@ -182,12 +180,12 @@ function ChatContent() {
       const data =
         typeof e.data === "string"
           ? (() => {
-              try {
-                return JSON.parse(e.data);
-              } catch {
-                return e.data;
-              }
-            })()
+            try {
+              return JSON.parse(e.data);
+            } catch {
+              return e.data;
+            }
+          })()
           : e.data;
 
       if (data?.type === "ORBIT_CHAT/SET_AND_SUBMIT") {
@@ -244,7 +242,7 @@ function ChatContent() {
       setTimeout(() => {
         // Create a synthetic form event
         const formEvent = {
-          preventDefault: () => {},
+          preventDefault: () => { },
         } as React.FormEvent<HTMLFormElement>;
 
         console.log("CHAT: Submitting form with handleFormSubmit");

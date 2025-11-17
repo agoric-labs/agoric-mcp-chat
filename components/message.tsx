@@ -58,7 +58,7 @@ export function ReasoningMessagePart({
           <div className="text-xs font-medium tracking-tight">Thinking...</div>
         </div>
       ) : (
-        <button 
+        <button
           onClick={() => setIsExpanded(!isExpanded)}
           className={cn(
             "flex items-center justify-between w-full",
@@ -257,16 +257,12 @@ const PurePreviewMessage = ({
 };
 
 export const Message = memo(PurePreviewMessage, (prevProps, nextProps) => {
-  // Always re-render if status changed
   if (prevProps.status !== nextProps.status) return false;
 
-  // Always re-render if this is the latest message and we're streaming
   if (nextProps.isLatestMessage && nextProps.status === "streaming") return false;
 
-  // Check if message parts changed
   if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
 
-  // Check if isLatestMessage prop changed
   if (prevProps.isLatestMessage !== nextProps.isLatestMessage) return false;
 
   return true;
