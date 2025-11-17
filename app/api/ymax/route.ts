@@ -487,7 +487,7 @@ export async function POST(req: Request) {
     getErrorMessage: (err) => {
       if (err instanceof Error) {
         if (err.message.includes("Rate limit")) return "Rate limit exceeded.";
-        if (isContextLimitError(err)) return "Conversation too large. Context has been reduced.";
+        if (isContextLimitError(err)) return "Conversation is getting too long.";
       }
       return "An error occurred.";
     },
