@@ -58,6 +58,130 @@ function formatMessageForSummary(msg: CoreMessage): string {
   return `${msg.role.toUpperCase()}: ${content.slice(0, 300)}`;
 }
 
+// Helper to generate deterministic fallback IDs
+const genId = () => `toolu_${Math.random().toString(36).slice(2, 16)}`;
+
+// Convert Vercel AI messages -> Anthropic message format
+function convertToAnthropicFormat(messages: CoreMessage[]): any[] {
+  const anthropicMessages: any[] = [];
+
+  for (const msg of messages.filter((m: any) => m.role !== "system")) {
+    const contentText =
+      typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
+
+    if (msg.role === "assistant" && (msg as any).toolInvocations?.length) {
+      const toolUseBlocks = (msg as any).toolInvocations.map((inv: any) => ({
+        type: "tool_use",
+        id: inv.toolCallId ?? genId(),
+        name: inv.toolName,
+        input: inv.args ?? {}
+      }));
+
+      anthropicMessages.push({
+        role: "assistant",
+        content: [
+          { type: "text", text: contentText },
+          ...toolUseBlocks
+        ]
+      });
+
+      const toolResultBlocks = (msg as any).toolInvocations
+        .filter((inv: any) => inv.result !== undefined)
+        .map((inv: any) => ({
+          type: "tool_result",
+          tool_use_id: inv.toolCallId ?? genId(),
+          content:
+            typeof inv.result === "string"
+              ? inv.result
+              : JSON.stringify(inv.result)
+        }));
+
+      if (toolResultBlocks.length) {
+        anthropicMessages.push({
+          role: "user",
+          content: toolResultBlocks
+        });
+      }
+    } else {
+      anthropicMessages.push({
+        role: msg.role,
+        content: [{ type: "text", text: contentText }]
+      });
+    }
+  }
+
+  return anthropicMessages;
+}
+
+// Convert Anthropic messages -> Vercel AI message format
+function convertFromAnthropicFormat(anthropicMessages: any[]): CoreMessage[] {
+  const converted: CoreMessage[] = [];
+  let pendingToolUses: any[] = [];
+
+  for (const msg of anthropicMessages) {
+    const parts = Array.isArray(msg.content)
+      ? msg.content
+      : [{ type: "text", text: msg.content }];
+
+    if (msg.role === "assistant") {
+      const text = parts.find((p: any) => p.type === "text")?.text ?? "";
+      const toolUses = parts.filter((p: any) => p.type === "tool_use");
+
+      if (toolUses.length) {
+        pendingToolUses = toolUses.map((tool: any) => ({
+          toolCallId: tool.id,
+          toolName: tool.name,
+          args: tool.input,
+          result: undefined
+        }));
+
+        converted.push({
+          role: "assistant",
+          content: text,
+          toolInvocations: [...pendingToolUses]
+        });
+      } else {
+        converted.push({ role: "assistant", content: text });
+      }
+      continue;
+    }
+
+    if (msg.role === "user" && pendingToolUses.length) {
+      const toolResults = parts.filter((p: any) => p.type === "tool_result");
+
+      if (toolResults.length) {
+        for (const pending of pendingToolUses) {
+          const match = toolResults.find(
+            (r: any) => r.tool_use_id === pending.toolCallId
+          );
+          if (match) pending.result = match.content;
+        }
+
+        const last = converted[converted.length - 1];
+        if (last?.toolInvocations) {
+          last.toolInvocations = [...pendingToolUses];
+        }
+
+        pendingToolUses = [];
+        continue;
+      }
+    }
+
+    if (msg.role === "user") {
+      const text =
+        parts.find((p: any) => p.type === "text")?.text ??
+        (typeof msg.content === "string"
+          ? msg.content
+          : JSON.stringify(msg.content));
+
+      converted.push({ role: "user", content: text });
+    }
+  }
+
+  return converted;
+}
+
+
 
 async function summarizeWithDirectAPI(messages: CoreMessage[]): Promise<string> {
   const conversation = messages.map(formatMessageForSummary).join("\n");
@@ -102,15 +226,8 @@ export async function summarizeWithContextEditing(
 
   const client = new Anthropic({ apiKey });
 
-  const anthropicMessages = messages
-    .filter((msg) => msg.role !== "system")
-    .map((msg) => ({
-      role: msg.role as "user" | "assistant",
-      content:
-        typeof msg.content === "string"
-          ? msg.content
-          : JSON.stringify(msg.content),
-    }));
+  // Convert to Anthropic's tool call format
+  const anthropicMessages = convertToAnthropicFormat(messages);
 
   const systemMessage = messages.find((m) => m.role === "system");
 
@@ -158,7 +275,7 @@ export async function summarizeWithContextEditing(
     }
 
     const response = await client.beta.messages.create(requestParams);
-    console.log("Context edited:", JSON.stringify(response.context_management, null, 2));
+    console.log("Edit result:", JSON.stringify(response.context_management, null, 2));
 
     const appliedEdits = response.context_management?.applied_edits || [];
 
@@ -168,15 +285,12 @@ export async function summarizeWithContextEditing(
     }
 
     const editedMessages = response.messages || anthropicMessages;
+    
+    // Convert back to Vercel AI SDK format
+    const convertedMessages = convertFromAnthropicFormat(editedMessages);
     const coreMessages: CoreMessage[] = systemMessage
-      ? [systemMessage, ...editedMessages.map((msg: any) => ({
-          role: msg.role,
-          content: msg.content
-        }))]
-      : editedMessages.map((msg: any) => ({
-          role: msg.role,
-          content: msg.content
-        }));
+      ? [systemMessage, ...convertedMessages]
+      : convertedMessages;
 
     const originalTokens = estimateTokens(messages);
     const newTokens = estimateTokens(coreMessages);
@@ -199,7 +313,7 @@ export async function summarizeWithContextEditing(
     
     const summaryText = await summarizeWithDirectAPI(oldMessages);
     const summaryMessage: CoreMessage = { role: "system", content: summaryText };
-    console.log("Summary:", summaryText);
+
     const finalMessages = [summaryMessage, ...recentMessages];
     const tokensSaved = estimateTokens(messages) - estimateTokens(finalMessages);
     

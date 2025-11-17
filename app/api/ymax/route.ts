@@ -319,6 +319,8 @@ export async function POST(req: Request) {
   //   "parts",
   //   messages.map((m) => m.parts.map((p) => p)),
   // );
+  console.log("messages shape", messages.map(m => Object.keys(m)));
+  
 
   const contextResult = await useContextManager(
     messages,
@@ -330,10 +332,6 @@ export async function POST(req: Request) {
   );
 
   const managedMessages = contextResult.messages;
-
-  console.log(
-    `[Context Management] Applied: ${contextResult.wasSummarized ? "Yes" : "No"}, Method: ${contextResult.method || "none"}, Tokens saved: ${contextResult.tokensSaved}`
-  );
 
   // Use the Max AI system prompt
   const systemPrompt = `You are **Max AI**, a DeFi chat assistant running behind the Ymax DeFi product. Ymax is an intelligent DeFi command center allowing individuals to build and edit a portfolio of DeFi positions across multiple protocols and networks, which can be executed with a single signature.  Your job is to retrieve, analyze, and explain user- and asset-related information via tools. Do not invent data; if data is missing or ambiguous, state that clearly and say what you can and cannot determine from Ymax.
