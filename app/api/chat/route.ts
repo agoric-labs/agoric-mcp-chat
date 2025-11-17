@@ -8,7 +8,7 @@ import { eq, and } from 'drizzle-orm';
 import { experimental_createMCPClient as createMCPClient, type MCPTransport } from '@ai-sdk/mcp';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { spawn } from "child_process";
-import { toolSchemas } from "@/lib/mcp/tool-schemas";
+import { agoricMcpToolSchemas } from "@/lib/mcp/agoric-mcp-tool-schemas";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   const url = new URL(req.url);
   const contextParam = url.searchParams.get('context');
   const inoParam = url.searchParams.get('ino');
-  
+
   const {
     messages,
     chatId,
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
           url: transport.url,
           headersPresent: transport.headers ? Object.keys(transport.headers).join(', ') : 'none'
         });
-        
+
         // Validate URL
         try {
           new URL(mcpServer.url);
@@ -112,20 +112,20 @@ export async function POST(req: Request) {
         } catch (error) {
           console.error('Invalid URL format:', mcpServer.url, error);
         }
-        
+
         // Make a test request to check status before actual connection
         console.log('Making test request to URL:', mcpServer.url);
         fetch(mcpServer.url, {
           method: 'HEAD',
           headers: transport.headers
         })
-        .then(response => {
-          console.log('Test request response status:', response.status, response.statusText);
-          console.log('Test request response headers:', Object.fromEntries(response.headers.entries()));
-        })
-        .catch(error => {
-          console.error('Test request failed:', error);
-        });
+          .then(response => {
+            console.log('Test request response status:', response.status, response.statusText);
+            console.log('Test request response headers:', Object.fromEntries(response.headers.entries()));
+          })
+          .catch(error => {
+            console.error('Test request failed:', error);
+          });
       } else if (mcpServer.type === 'stdio') {
         // For stdio transport, we need command and args
         if (!mcpServer.command || !mcpServer.args || mcpServer.args.length === 0) {
@@ -193,7 +193,7 @@ export async function POST(req: Request) {
       mcpClients.push(mcpClient);
 
       const mcptools = await mcpClient.tools({
-        schemas: toolSchemas,
+        schemas: agoricMcpToolSchemas,
       });
 
       console.log(`MCP tools from ${mcpServer.type} transport:`, Object.keys(mcptools));
@@ -225,7 +225,7 @@ export async function POST(req: Request) {
 
   // Build dynamic system prompt based on ino parameter
   let systemPrompt;
-  
+
   if (inoParam === 'true') {
     // Use Ymax system prompt for INO mode
     systemPrompt = `You are Ymax, an expert portfolio optimization AI specialized in Agoric ecosystem DeFi yield strategies.
@@ -373,11 +373,11 @@ export async function POST(req: Request) {
         },
       },
       anthropic: {
-        thinking: { 
-          type: 'enabled', 
-          budgetTokens: 12000 
+        thinking: {
+          type: 'enabled',
+          budgetTokens: 12000
         },
-      } 
+      }
     },
     onError: (error) => {
       console.error(JSON.stringify(error, null, 2));
@@ -398,7 +398,7 @@ export async function POST(req: Request) {
       // }
     }
   });
-  
+
   return result.toUIMessageStreamResponse({
     originalMessages: messages,
     sendReasoning: true, // Enable streaming of reasoning/thinking content
