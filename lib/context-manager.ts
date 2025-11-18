@@ -20,7 +20,7 @@ export interface ContextManagerConfig {
 }
 
 export const DEFAULT_CONTEXT_CONFIG: Required<Omit<ContextManagerConfig, 'contextEditConfig'>> = {
-  maxTokens: 120_000,
+  maxTokens: 100_000,
   keepRecentMessages: 8,
   useContextEditing: true,
   debug: false,

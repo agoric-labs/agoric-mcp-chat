@@ -286,7 +286,7 @@ export async function POST(req: Request) {
   const contextResult = await useContextManager(
     messages,
     contextConfig || {
-      maxTokens: 120_000,
+      maxTokens: 100_000,
       keepRecentMessages: 8,
       useContextEditing: true,
     },
