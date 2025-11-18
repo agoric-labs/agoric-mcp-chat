@@ -214,9 +214,9 @@ export async function summarizeWithContextEditing(
   
   const clearToolUses = {
     enabled: options.clearToolUses?.enabled ?? true,
-    triggerInputTokens: options.clearToolUses?.triggerInputTokens ?? 30_000,  
-    keepToolUses: options.clearToolUses?.keepToolUses ?? 3, 
-    clearAtLeastTokens: options.clearToolUses?.clearAtLeastTokens ?? 20_000,
+    triggerInputTokens: options.clearToolUses?.triggerInputTokens ?? 20_000,
+    keepToolUses: options.clearToolUses?.keepToolUses ?? 1,
+    clearAtLeastTokens: options.clearToolUses?.clearAtLeastTokens ?? 15_000,
     excludeTools: options.clearToolUses?.excludeTools,
   };
   

@@ -32,67 +32,28 @@ interface MCPServerConfig {
   headers?: KeyValuePair[];
 }
 
-function isContextLimitError(err: any) {
-  const msg = err?.message || err?.toString?.() || "";
+function isContextLimitError(err: unknown): boolean {
+  if (!err) return false;
+  
+  const msg = (err && typeof err === 'object' && 'message' in err) 
+    ? String(err.message)
+    : String(err);
 
-  return (
+  const hasContextMessage = 
     msg.includes("context length") ||
     msg.includes("prompt is too long") ||
     msg.includes("context window") ||
-    msg.includes("tokens >") ||
-    err?.error?.type === "context_length_exceeded"
-  );
+    msg.includes("tokens >");
+
+  const errorObj = err && typeof err === 'object' && 'error' in err 
+    ? (err as any).error 
+    : null;
+    
+  const hasContextErrorType = errorObj?.type === "context_length_exceeded";
+  const hasContextErrorCode = errorObj?.code === 413;
+
+  return hasContextMessage || hasContextErrorType || hasContextErrorCode;
 }
-
-async function restartStreamAfterOverflow(args: any, attempt = 1): Promise<any> {
-  const maxAttempts = 3;
-  const configs = [
-    { maxTokens: 80_000, keepRecentMessages: 6, useContextEditing: true },
-    { maxTokens: 50_000, keepRecentMessages: 4, useContextEditing: true },
-    { maxTokens: 30_000, keepRecentMessages: 3, useContextEditing: false }, // Fallback to summarization
-  ];
-
-  try {
-    console.log(`[Recovery] Attempt ${attempt}/${maxAttempts}, tokens: ${configs[attempt - 1].maxTokens}`);
-    
-    const contextResult = await useContextManager(args.messages, configs[attempt - 1]);
-    
-    const retry = streamText({
-      ...args,
-      messages: contextResult.messages,
-    });
-
-    retry.consumeStream();
-    return retry;
-    
-  } catch (error) {
-    console.error(`[Recovery] Attempt ${attempt} failed:`, error);
-    
-    if (attempt < maxAttempts && isContextLimitError(error)) {
-      return restartStreamAfterOverflow(args, attempt + 1);
-    }
-    
-    // Final fallback: minimal context
-    if (attempt === maxAttempts) {
-      console.warn("[Recovery] Final fallback: using minimal context");
-      const minimalMessages = [
-        args.messages.find((m: any) => m.role === 'system'),
-        ...args.messages.slice(-2)
-      ].filter(Boolean);
-      
-      const retry = streamText({
-        ...args,
-        messages: minimalMessages,
-      });
-      retry.consumeStream();
-      return retry;
-    }
-    
-    throw error;
-  }
-}
-
-
 
 
 export async function POST(req: Request) {
@@ -320,7 +281,7 @@ export async function POST(req: Request) {
   //   messages.map((m) => m.parts.map((p) => p)),
   // );
   console.log("messages shape", messages.map(m => Object.keys(m)));
-  
+
 
   const contextResult = await useContextManager(
     messages,
@@ -450,27 +411,7 @@ export async function POST(req: Request) {
       google: { thinkingConfig: { thinkingBudget: 2048 } },
       anthropic: { thinking: { type: "enabled", budgetTokens: 12000 } },
     },
-    onError: async (err: any) => {
-      if (!isContextLimitError(err)) {
-        console.error("[Stream Error] Non-context error:", err);
-        return;
-      }
-
-      console.warn("[Context Overflow] Attempting recovery...");
-      
-      try {
-        if (activeStream.controller?.abort) {
-          activeStream.controller.abort();
-        }
-        activeStream = await restartStreamAfterOverflow(args);
-      } catch (retryErr) {
-        console.error("[Context Overflow] All recovery attempts failed:", retryErr);
-        // Don't throw - let the stream handle the error gracefully
-        return;
-      }
-    },
-
-    async onFinish({ response }) {
+    async onFinish({ response }: { response: any }) {
       const allMessages = appendResponseMessages({
         messages,
         responseMessages: response.messages,
@@ -487,7 +428,7 @@ export async function POST(req: Request) {
     getErrorMessage: (err) => {
       if (err instanceof Error) {
         if (err.message.includes("Rate limit")) return "Rate limit exceeded.";
-        if (isContextLimitError(err)) return "Conversation is getting too long.";
+        if (isContextLimitError(err)) return "Context limit reached. Please try starting a new conversation.";
       }
       return "An error occurred.";
     },
