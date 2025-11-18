@@ -12,7 +12,7 @@ import {
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { spawn } from "child_process";
 import { anthropic } from '@ai-sdk/anthropic';
-import { agoricMcpDevopsToolSchemas } from "@/lib/mcp/agoric-mcp-devops-schemas";
+import { agoricMcpDevopsToolSchemas } from "@/lib/mcp/agoric-devops-tool-schemas";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
