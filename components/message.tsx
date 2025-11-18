@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message as TMessage } from "ai";
+import type { UIMessage as TMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -21,8 +21,8 @@ const cleanDisplayText = (text: string): string => {
 
 interface ReasoningPart {
   type: "reasoning";
-  reasoning: string;
-  details: Array<{ type: "text"; text: string }>;
+  text: string; // AI SDK v5 uses 'text' not 'reasoning'
+  state?: "streaming" | "done"; // Track streaming state
 }
 
 interface ReasoningMessagePartProps {
@@ -58,7 +58,7 @@ export function ReasoningMessagePart({
           <div className="text-xs font-medium tracking-tight">Thinking...</div>
         </div>
       ) : (
-        <button 
+        <button
           onClick={() => setIsExpanded(!isExpanded)}
           className={cn(
             "flex items-center justify-between w-full",
@@ -116,15 +116,9 @@ export function ReasoningMessagePart({
             <div className="text-xs text-muted-foreground/70 pl-1 font-medium">
               The assistant&apos;s thought process:
             </div>
-            {part.details.map((detail, detailIndex) =>
-              detail.type === "text" ? (
-                <div key={detailIndex} className="px-2 py-1.5 bg-muted/10 rounded-md border border-border/30">
-                  <Markdown>{detail.text}</Markdown>
-                </div>
-              ) : (
-                "<redacted>"
-              ),
-            )}
+            <div className="px-2 py-1.5 bg-muted/10 rounded-md border border-border/30">
+              <Markdown>{part.text || "Thinking..."}</Markdown>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -145,6 +139,7 @@ const PurePreviewMessage = ({
   const searchParams = useSearchParams();
   const hideTools = searchParams.get("hideTools") === "true";
   const hideReasoning = searchParams.get("hideReasoning") === "true";
+
   // Create a string with all text parts for copy functionality
   const getMessageText = () => {
     if (!message.parts) return "";
@@ -177,61 +172,72 @@ const PurePreviewMessage = ({
         >
           <div className="flex flex-col w-full space-y-3 min-w-0">
             {message.parts?.map((part, i) => {
-              switch (part.type) {
-                case "text":
-                  return (
-                    <motion.div
-                      initial={{ y: 5, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      key={`message-${message.id}-part-${i}`}
-                      className="flex flex-row gap-2 items-start w-full min-w-0"
+              // Handle text parts
+              if (part.type === "text") {
+                return (
+                  <motion.div
+                    initial={{ y: 5, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    key={`message-${message.id}-part-${i}`}
+                    className="flex flex-row gap-2 items-start w-full min-w-0"
+                  >
+                    <div
+                      className={cn("flex flex-col gap-3 w-full min-w-0 break-words overflow-x-auto", {
+                        "bg-secondary text-secondary-foreground px-2 xs:px-3 sm:px-4 py-2 xs:py-3 rounded-2xl":
+                          message.role === "user",
+                      })}
                     >
-                      <div
-                        className={cn("flex flex-col gap-3 w-full min-w-0 break-words overflow-x-auto", {
-                          "bg-secondary text-secondary-foreground px-2 xs:px-3 sm:px-4 py-2 xs:py-3 rounded-2xl":
-                            message.role === "user",
-                        })}
+                      <Markdown
+                        messageId={message.id}
+                        isEditable={message.role === "assistant"}
                       >
-                        <Markdown 
-                          messageId={message.id}
-                          isEditable={message.role === "assistant"}
-                        >
-                          {message.role === "user" ? cleanDisplayText(part.text) : part.text}
-                        </Markdown>
-                      </div>
-                    </motion.div>
-                  );
-                case "tool-invocation":
-                  if (hideTools) return null;
-                  
-                  const { toolName, state, args } = part.toolInvocation;
-                  const result = 'result' in part.toolInvocation ? part.toolInvocation.result : null;
-                  
-                  return (
-                    <ToolInvocation
-                      key={`message-${message.id}-part-${i}`}
-                      toolName={toolName}
-                      state={state}
-                      args={args}
-                      result={result}
-                      isLatestMessage={isLatestMessage}
-                      status={status}
-                    />
-                  );
+                        {message.role === "user" ? cleanDisplayText(part.text) : part.text}
+                      </Markdown>
+                    </div>
+                  </motion.div>
+                );
+              }
+
+              // Handle tool parts (v5 format: tool-{toolName})
+              if (part.type.startsWith("tool-")) {
+                if (hideTools) return null;
+
+                const toolName = part.type.substring(5); // Remove "tool-" prefix
+                const toolPart = part as any; // Type assertion for tool part
+                const state = toolPart.state;
+                const args = toolPart.input;
+                const result = toolPart.output;
+
+                return (
+                  <ToolInvocation
+                    key={`message-${message.id}-part-${i}`}
+                    toolName={toolName}
+                    state={state}
+                    args={args}
+                    result={result}
+                    isLatestMessage={isLatestMessage}
+                    status={status}
+                  />
+                );
+              }
+
+              // Handle other part types
+              switch (part.type) {
                 case "reasoning":
                   if (hideReasoning) return null;
-                  
+
+                  // Check if this specific reasoning part is currently streaming
+                  const reasoningPart = part as any;
+                  const isReasoningStreaming =
+                    isLatestMessage &&
+                    status === "streaming" &&
+                    reasoningPart.state === "streaming";
+
                   return (
                     <ReasoningMessagePart
                       key={`message-${message.id}-${i}`}
-                      // @ts-expect-error part
-                      part={part}
-                      isReasoning={
-                        (message.parts &&
-                          status === "streaming" &&
-                          i === message.parts.length - 1) ??
-                        false
-                      }
+                      part={part as ReasoningPart}
+                      isReasoning={isReasoningStreaming}
                     />
                   );
                 default:
@@ -252,8 +258,12 @@ const PurePreviewMessage = ({
 
 export const Message = memo(PurePreviewMessage, (prevProps, nextProps) => {
   if (prevProps.status !== nextProps.status) return false;
-  if (prevProps.message.annotations !== nextProps.message.annotations)
-    return false;
+
+  if (nextProps.isLatestMessage && nextProps.status === "streaming") return false;
+
   if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
+
+  if (prevProps.isLatestMessage !== nextProps.isLatestMessage) return false;
+
   return true;
 });
