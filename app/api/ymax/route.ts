@@ -12,7 +12,7 @@ import {
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { spawn } from "child_process";
 import { anthropic } from '@ai-sdk/anthropic';
-import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-mcp-tool-schemas";
+import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-tool-schemas";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;

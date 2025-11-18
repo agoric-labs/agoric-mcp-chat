@@ -8,7 +8,7 @@ import { eq, and } from 'drizzle-orm';
 import { experimental_createMCPClient as createMCPClient, type MCPTransport } from '@ai-sdk/mcp';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { spawn } from "child_process";
-import { agoricMcpToolSchemas } from "@/lib/mcp/agoric-mcp-tool-schemas";
+import { agoricMcpToolSchemas } from "@/lib/mcp/agoric-tool-schemas";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
