@@ -1,7 +1,8 @@
 "use client";
 
 import { defaultModel, type modelID } from "@/ai/providers";
-import { Message, useChat } from "@ai-sdk/react";
+import { UIMessage, useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
@@ -44,7 +45,7 @@ function ChatContent() {
     "selectedModel",
     defaultModel,
   );
-  const [userId, setUserId] = useState<string>("");
+  const [userId, setUserId] = useState<string>(getUserId());
   const [generatedChatId, setGeneratedChatId] = useState<string>("");
 
   // Get MCP server data from context
@@ -53,11 +54,6 @@ function ChatContent() {
   // Get the editor context
   const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } =
     useEditor();
-
-  // Initialize userId
-  useEffect(() => {
-    setUserId(getUserId());
-  }, []);
 
   // Add event listener for code submissions
   useEffect(() => {
@@ -92,36 +88,43 @@ function ChatContent() {
   // Check params to determine which API to use
   const useAgoricWebsiteMCP = searchParams.get("useAgoricWebsiteMCP");
   const theme = searchParams.get("theme");
-  
+
   let apiBase = "/api/chat"; // default
   if (useAgoricWebsiteMCP) {
     apiBase = "/api/support";
   } else if (theme === "ymax") {
     apiBase = "/api/ymax";
   }
-  
+
   const apiUrl = newParams.toString()
     ? `${apiBase}?${newParams.toString()}`
     : apiBase;
 
+  // Manage input state manually in v5
+  const [input, setInput] = useState("");
+
   const {
     messages,
-    input,
-    handleInputChange,
-    handleSubmit,
+    sendMessage,
     status,
     stop,
-    append,
   } = useChat({
     id: chatId || generatedChatId, // Use generated ID if no chatId in URL
-    maxSteps: 20,
-    body: {
-      selectedModel,
-      mcpServers: mcpServersForApi,
-      chatId: chatId || generatedChatId, // Use generated ID if no chatId in URL
-      userId,
-    },
-    experimental_throttle: 500,
+    transport: new DefaultChatTransport({
+      api: apiUrl,
+      prepareSendMessagesRequest({ messages }) {
+        return {
+          body: {
+            messages,
+            selectedModel,
+            mcpServers: mcpServersForApi,
+            chatId: chatId || generatedChatId,
+            userId,
+          },
+        };
+      },
+    }),
+    experimental_throttle: 50, // Lower throttle for smoother streaming (50ms)
     onFinish: () => {
       // Invalidate the chats query to refresh the sidebar
       if (userId) {
@@ -129,6 +132,7 @@ function ChatContent() {
       }
     },
     onError: (error) => {
+      console.error("CHAT: onError", error);
       toast.error(
         error.message.length > 0
           ? error.message
@@ -136,7 +140,6 @@ function ChatContent() {
         { position: "top-center", richColors: true },
       );
     },
-    api: apiUrl,
   });
 
   // Define loading state early so it can be used in effects
@@ -147,25 +150,27 @@ function ChatContent() {
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
 
-      if (!chatId && generatedChatId && input.trim()) {
-        // If this is a new conversation, redirect to the chat page with the generated ID
-        const effectiveChatId = generatedChatId;
+      if (!input.trim()) return;
 
-        // Submit the form
-        handleSubmit(e);
+      sendMessage({ text: input });
+      setInput('');
 
+      // If this is a new conversation, update the URL without causing a remount
+      if (!chatId && generatedChatId) {
         // Preserve all query parameters in navigation
         const searchParams = new URLSearchParams(window.location.search);
         const queryString = searchParams.toString();
         const queryQuery = queryString ? `?${queryString}` : "";
-        router.push(`/chat/${effectiveChatId}${queryQuery}`);
-      } else {
-        // Normal submission for existing chats
-        handleSubmit(e);
+        window.history.replaceState({}, '', `/chat/${generatedChatId}${queryQuery}`);
       }
     },
-    [chatId, generatedChatId, input, handleSubmit, router],
+    [chatId, generatedChatId, input, sendMessage],
   );
+
+  // Handle input changes
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+  }, []);
 
   // Track previous submission to prevent loops
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
@@ -175,18 +180,18 @@ function ChatContent() {
       const data =
         typeof e.data === "string"
           ? (() => {
-              try {
-                return JSON.parse(e.data);
-              } catch {
-                return e.data;
-              }
-            })()
+            try {
+              return JSON.parse(e.data);
+            } catch {
+              return e.data;
+            }
+          })()
           : e.data;
 
       if (data?.type === "ORBIT_CHAT/SET_AND_SUBMIT") {
         const text = data?.payload?.input ?? "";
         if (text) {
-          await append({ role: "user", content: text } as Message);
+          sendMessage({ text });
         }
       }
     }
@@ -237,7 +242,7 @@ function ChatContent() {
       setTimeout(() => {
         // Create a synthetic form event
         const formEvent = {
-          preventDefault: () => {},
+          preventDefault: () => { },
         } as React.FormEvent<HTMLFormElement>;
 
         console.log("CHAT: Submitting form with handleFormSubmit");

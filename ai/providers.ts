@@ -54,7 +54,7 @@ const xaiClient = createXai({
 });
 
 const languageModels = {
-  "gpt-4.1-mini": openaiClient("gpt-4.1-mini"),
+  "gpt-4.1-mini": openaiClient.chat("gpt-4.1-mini"),
   "claude-4-5-sonnet": anthropicClient('claude-sonnet-4-5'),
   "qwen-qwq": wrapLanguageModel(
     {

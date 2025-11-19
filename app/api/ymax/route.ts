@@ -1,6 +1,5 @@
 import { model, type modelID } from "@/ai/providers";
-import { streamText, type UIMessage } from "ai";
-import { appendResponseMessages } from "ai";
+import { streamText, type UIMessage, convertToModelMessages, stepCountIs, type CoreMessage } from "ai";
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { chats } from "@/lib/db/schema";
@@ -8,16 +7,16 @@ import { eq, and } from "drizzle-orm";
 
 import {
   experimental_createMCPClient as createMCPClient,
-  MCPTransport,
-} from "ai";
-import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio";
+  type MCPTransport,
+} from "@ai-sdk/mcp";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { spawn } from "child_process";
+import { anthropic } from '@ai-sdk/anthropic';
+import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-tool-schemas";
 import { useContextManager } from "@/lib/hooks/use-context-manager";
-import type { ContextManagerConfig } from "@/lib/context-manager";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
-
 interface KeyValuePair {
   key: string;
   value: string;
@@ -32,30 +31,6 @@ interface MCPServerConfig {
   headers?: KeyValuePair[];
 }
 
-function isContextLimitError(err: unknown): boolean {
-  if (!err) return false;
-  
-  const msg = (err && typeof err === 'object' && 'message' in err) 
-    ? String(err.message)
-    : String(err);
-
-  const hasContextMessage = 
-    msg.includes("context length") ||
-    msg.includes("prompt is too long") ||
-    msg.includes("context window") ||
-    msg.includes("tokens >");
-
-  const errorObj = err && typeof err === 'object' && 'error' in err 
-    ? (err as any).error 
-    : null;
-    
-  const hasContextErrorType = errorObj?.type === "context_length_exceeded";
-  const hasContextErrorCode = errorObj?.code === 413;
-
-  return hasContextMessage || hasContextErrorType || hasContextErrorCode;
-}
-
-
 export async function POST(req: Request) {
   // Extract context from URL query params
   const url = new URL(req.url);
@@ -67,14 +42,12 @@ export async function POST(req: Request) {
     selectedModel,
     userId,
     mcpServers = [],
-    contextConfig,
   }: {
     messages: UIMessage[];
     chatId?: string;
     selectedModel: modelID;
     userId: string;
     mcpServers?: MCPServerConfig[];
-    contextConfig?: ContextManagerConfig;
   } = await req.json();
 
   if (!userId) {
@@ -231,7 +204,7 @@ export async function POST(req: Request) {
           });
         }
 
-        transport = new StdioMCPTransport({
+        transport = new StdioClientTransport({
           command: mcpServer.command,
           args: mcpServer.args,
           env: Object.keys(env).length > 0 ? env : undefined,
@@ -246,12 +219,14 @@ export async function POST(req: Request) {
       const mcpClient = await createMCPClient({ transport });
       mcpClients.push(mcpClient);
 
-      const mcptools = await mcpClient.tools();
+      const mcptools = await mcpClient.tools({
+        schemas: ymaxMcptoolSchemas,
+      });
 
-      // console.log(
-      //   `MCP tools from ${mcpServer.type} transport:`,
-      //   Object.keys(mcptools),
-      // );
+      console.log(
+        `MCP tools from ${mcpServer.type} transport:`,
+        Object.keys(mcptools),
+      );
 
       // Add MCP tools to tools object
       tools = { ...tools, ...mcptools };
@@ -275,24 +250,11 @@ export async function POST(req: Request) {
     });
   }
 
-  // console.log("messages", messages);
-  // console.log(
-  //   "parts",
-  //   messages.map((m) => m.parts.map((p) => p)),
-  // );
-  console.log("messages shape", messages.map(m => Object.keys(m)));
-
-
-  const contextResult = await useContextManager(
-    messages,
-    contextConfig || {
-      maxTokens: 100_000,
-      keepRecentMessages: 8,
-      useContextEditing: true,
-    },
+  console.log("messages", messages);
+  console.log(
+    "parts",
+    messages.map((m) => m.parts.map((p) => p)),
   );
-
-  const managedMessages = contextResult.messages;
 
   // Use the Max AI system prompt
   const systemPrompt = `You are **Max AI**, a DeFi chat assistant running behind the Ymax DeFi product. Ymax is an intelligent DeFi command center allowing individuals to build and edit a portfolio of DeFi positions across multiple protocols and networks, which can be executed with a single signature.  Your job is to retrieve, analyze, and explain user- and asset-related information via tools. Do not invent data; if data is missing or ambiguous, state that clearly and say what you can and cannot determine from Ymax.
@@ -401,37 +363,85 @@ export async function POST(req: Request) {
     }
   }
 
-   const args = {
-    model: model.languageModel(selectedModel),
-    system: finalSystemPrompt,
-    messages: managedMessages,
-    tools,
-    maxSteps: 20,
-    providerOptions: {
-      google: { thinkingConfig: { thinkingBudget: 2048 } },
-      anthropic: { thinking: { type: "enabled", budgetTokens: 12000 } },
-    },
-    async onFinish({ response }: { response: any }) {
-      const allMessages = appendResponseMessages({
-        messages,
-        responseMessages: response.messages,
-      });
-      // Save messages if needed
-    },
-  };
-
-  let activeStream = streamText(args);
-  activeStream.consumeStream();
-
-  return activeStream.toDataStreamResponse({
-    sendReasoning: true,
-    getErrorMessage: (err) => {
-      if (err instanceof Error) {
-        if (err.message.includes("Rate limit")) return "Rate limit exceeded.";
-        if (isContextLimitError(err)) return "Context limit reached. Please try starting a new conversation.";
-      }
-      return "An error occurred.";
+  const coreMessages = convertToModelMessages(messages);
+  const contextResult = await useContextManager(coreMessages, {
+    maxTokens: 100_000,
+    keepRecentMessages: 8,
+    useContextEditing: true,
+    debug: false,
+    contextEditConfig: {
+      clearThinking: {
+        enabled: true,
+        keepThinkingTurns: 2,
+      },
+      clearToolUses: {
+        enabled: true,
+        triggerInputTokens: 20_000,
+        keepToolUses: 1,
+        clearAtLeastTokens: 15_000,
+        excludeTools: [
+          "ymax-get-all-instruments",
+          "ymax-get-portfolio",
+          "ymax-optimize-portfolio",
+        ],
+      },
     },
   });
 
+  // Log context management results
+  if (contextResult.wasSummarized) {
+    console.log(
+      `[Ymax Context Manager] Applied ${contextResult.method}: ` +
+      `${contextResult.originalTokens} → ${contextResult.newTokens} tokens ` +
+      `(saved ${contextResult.tokensSaved})`
+    );
+  }
+
+  // If there was an error setting up MCP clients but we at least have composio tools, continue
+  const result = streamText({
+    model: model.languageModel(selectedModel),
+    system: finalSystemPrompt,
+    messages: contextResult.messages,
+    tools,
+    stopWhen: stepCountIs(20),
+    providerOptions: {
+      google: {
+        thinkingConfig: {
+          thinkingBudget: 2048,
+        },
+      },
+      anthropic: {
+        thinking: {
+          type: "enabled",
+          budgetTokens: 12000,
+        },
+      },
+    },
+    onError: (error) => {
+      console.error(JSON.stringify(error, null, 2));
+    },
+    async onFinish({ response }) {
+      // In v5, response.messages already contains all formatted messages
+      // await saveChat({
+      //   id,
+      //   userId,
+      //   messages: response.messages,
+      // });
+
+      // const dbMessages = convertToDBMessages(response.messages, id);
+      // await saveMessages({ messages: dbMessages });
+      // close all mcp clients
+      // for (const client of mcpClients) {
+      //   await client.close();
+      // }
+    },
+  });
+
+  return result.toUIMessageStreamResponse({
+    originalMessages: messages,
+    sendReasoning: true, // Enable streaming of reasoning/thinking content
+    headers: {
+      "Content-Type": "text/event-stream",
+    },
+  });
 }
