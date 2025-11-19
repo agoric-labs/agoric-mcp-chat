@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   }
 
   const id = chatId || nanoid();
-
+  console.log(mcpServers)
   // Check if chat already exists for the given ID
   // If not, we'll create it in onFinish
   let isNewChat = false;
