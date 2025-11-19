@@ -6,6 +6,28 @@ import { z } from "zod";
  * TODO: This duplication is temporary and will be removed once the different
  * repositories are merged into a monorepo structure.
  */
+
+const evmChainEnum = z.enum([
+    'avalanche',
+    'arbitrum',
+    'ethereum',
+    'optimism',
+    'base',
+]);
+
+const bech32Agoric = z
+    .string()
+    .regex(/^agoric1[0-9a-z]{38,58}$/i, 'Invalid agoric address');
+
+const bech32Noble = z
+    .string()
+    .regex(/^noble1[0-9a-z]{38,58}$/i, 'Invalid noble address');
+
+const evmAddress = z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid EVM address');
+
+
 export const ymaxMcptoolSchemas = {
     // --- vstorage tool example ---
     'fetch-information-from-vstorage': {
@@ -218,4 +240,89 @@ export const ymaxMcptoolSchemas = {
             destinationChain: z.string().optional().describe('Destination chain (e.g., avalanche | arbitrum | ethereum).'),
         }),
     },
+
+    // --- cross-chain trace tools ---
+    'fetch-portfolio-addresses': {
+        inputSchema: z.object({
+            portfolioPath: z
+                .string()
+                .describe(
+                    'Full vstorage portfolio path (e.g., published.ymax0.portfolios.portfolio0 or published.ymax1.portfolios.portfolio0)'
+                ),
+            network: z
+                .string()
+                .optional()
+                .default('main')
+                .describe('Network to query (default: main)'),
+        }),
+    },
+
+    'trace-axelar-gmp-step': {
+        inputSchema: z.object({
+            destChain: evmChainEnum.describe(
+                'Destination chain name (avalanche, arbitrum, ethereum, optimism, base)'
+            ),
+            agoricAddress: bech32Agoric.describe('Source Agoric address (agoric1...)'),
+            size: z
+                .number()
+                .optional()
+                .default(1)
+                .describe('Number of results to return'),
+        }),
+    },
+
+    'trace-agoric-funding-ack-step': {
+        inputSchema: z.object({
+            agoricAddress: bech32Agoric.describe('Agoric address (agoric1...)'),
+            nobleAddress: bech32Noble.describe('Noble ICA address (noble1...)'),
+            take: z
+                .number()
+                .optional()
+                .default(20)
+                .describe('Number of transactions to fetch (max 20, Mintscan API limit)'),
+        }),
+    },
+
+    'trace-cctp-noble-step': {
+        inputSchema: z.object({
+            nobleAddress: bech32Noble.describe('Noble address (noble1...)'),
+            destChain: evmChainEnum.describe(
+                'Destination chain name (avalananche, arbitrum, ethereum, optimism, base)'
+            ),
+            destinationEvmAddress: evmAddress.describe('Destination EVM address (0x...)'),
+            take: z
+                .number()
+                .optional()
+                .default(20)
+                .describe('Number of transactions to fetch'),
+        }),
+    },
+
+    'trace-final-evm-step': {
+        inputSchema: z.object({
+            destChain: evmChainEnum.describe(
+                'Destination chain name (avalanche, arbitrum, ethereum, optimism, base)'
+            ),
+            destinationEvmAddress: evmAddress.describe('Destination EVM address (0x...)'),
+            expectedAmount: z
+                .string()
+                .optional()
+                .describe('Expected transaction amount to match'),
+        }),
+    },
+
+    'trace-complete-cross-chain-flow': {
+        inputSchema: z.object({
+            agoricAddress: bech32Agoric.describe('Source Agoric address (agoric1...)'),
+            nobleAddress: bech32Noble.describe('Noble ICA address (noble1...)'),
+            destChain: evmChainEnum.describe(
+                'Destination chain name (avalanche, arbitrum, ethereum, optimism, base)'
+            ),
+            destinationEvmAddress: evmAddress.describe('Destination EVM address (0x...)'),
+            positionName: z
+                .string()
+                .optional()
+                .describe('Position name (e.g., USDN for special handling)'),
+        }),
+    }
 };
