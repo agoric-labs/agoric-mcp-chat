@@ -400,24 +400,18 @@ export async function POST(req: Request) {
     contextEditConfig: {
       clearThinking: {
         enabled: true,
-        keepThinkingTurns: 1, // Only most recent - older thinking has diminishing value
+        keepThinkingTurns: 1,
       },
       clearToolUses: {
         enabled: true,
-        triggerInputTokens: 15_000, // Start cleanup earlier
+        triggerInputTokens: 15_000,
         keepToolUses: 1,
         clearAtLeastTokens: 15_000,
-        excludeTools: [
-          // Removed 'ymax-get-all-instruments' - can be refetched cheaply
-          // Instruments list doesn't change often, better to refetch than keep in context
-          'ymax-get-portfolio', // Keep - changes frequently, expensive to refetch
-          'ymax-optimize-portfolio', // Keep - expensive computation
-        ],
+        excludeTools: [],
       },
     },
   });
 
-  // Log context management results
   if (contextResult.wasSummarized) {
     console.log(
       `[Context Manager] Applied ${contextResult.method}: ` +
@@ -425,7 +419,6 @@ export async function POST(req: Request) {
         `(saved ${contextResult.tokensSaved})`,
     );
 
-    // Warn if still too close to limit after cleanup (Anthropic best practice)
     const maxTokens = 70_000;
     const utilizationPercent = Math.round(
       (contextResult.newTokens / maxTokens) * 100,
