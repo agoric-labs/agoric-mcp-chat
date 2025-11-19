@@ -190,7 +190,33 @@ async function summarizeWithDirectAPI(messages: CoreMessage[]): Promise<string> 
     model: model.languageModel("claude-4-5-sonnet"),
     temperature: 0.3,
     maxTokens: 2000,
-    system: `Summarize this DeFi conversation concisely. Focus on: user goals, key data/results, current portfolio state, and next actions. Avoid repetition.`,
+    system: `You are summarizing a conversation about DeFi portfolio optimization and Agoric blockchain operations.
+
+Create a structured, information-dense summary that preserves critical context for continuing the conversation:
+
+## User Context & Goals
+- Primary objectives and portfolio goals
+- Risk preferences and constraints mentioned
+- Specific chains, protocols, or assets of interest
+
+## Key Data & Analysis
+- Portfolio positions and allocations
+- APY/TVL data points referenced
+- Yield opportunities identified
+- Risk assessments made
+
+## Technical Actions & State
+- MCP tools executed and their results
+- API calls made and responses received
+- Smart contract interactions or proposals
+- Current system state or configurations
+
+## Decisions & Next Steps
+- Conclusions reached or recommendations made
+- User confirmations or rejections
+- Pending actions or follow-up tasks
+
+Focus on facts, numbers, and actionable information. Omit pleasantries, acknowledgments, and repetitive explanations. Preserve exact protocol names, chain identifiers, token symbols, and numerical values.`,
     messages: [
       {
         role: "user",

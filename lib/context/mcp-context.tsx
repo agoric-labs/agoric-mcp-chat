@@ -48,7 +48,7 @@ const DEFAULT_MCP_SERVER: MCPServer = {
   id: DEFAULT_MCP_SERVER_ID,
   name: "Agoric MCP Server",
   type: "sse",
-  url: "https://ymax-mcp-server.agoric-core.workers.dev/sse",
+  url: "http://127.0.0.1:8787/sse",
 };
 
 export function MCPProvider(props: { children: React.ReactNode }) {
@@ -61,7 +61,7 @@ export function MCPProvider(props: { children: React.ReactNode }) {
 
   if (useAgoricWebsiteMCP) {
     DEFAULT_MCP_SERVER.url =
-      "https://agoric-mcp-devops-server.agoric-core.workers.dev/sse";
+      "http://127.0.0.1:8787/sse";
   }
   const [_mcpServers, setMcpServers] = useLocalStorage<MCPServer[]>(
     STORAGE_KEYS.MCP_SERVERS,
