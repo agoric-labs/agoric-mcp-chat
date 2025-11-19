@@ -1,19 +1,27 @@
-import { model, type modelID } from "@/ai/providers";
-import { streamText, type UIMessage, convertToModelMessages, stepCountIs, type CoreMessage } from "ai";
-import { nanoid } from "nanoid";
-import { db } from "@/lib/db";
-import { chats } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { model, type modelID } from '@/ai/providers';
+import {
+  streamText,
+  type UIMessage,
+  convertToModelMessages,
+  stepCountIs,
+  type CoreMessage,
+} from 'ai';
+import { nanoid } from 'nanoid';
+import { db } from '@/lib/db';
+import { chats } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 import {
   experimental_createMCPClient as createMCPClient,
   type MCPTransport,
-} from "@ai-sdk/mcp";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { spawn } from "child_process";
+} from '@ai-sdk/mcp';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { spawn } from 'child_process';
 import { anthropic } from '@ai-sdk/anthropic';
-import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-tool-schemas";
-import { useContextManager } from "@/lib/hooks/use-context-manager";
+import { ymaxMcptoolSchemas } from '@/lib/mcp/ymax-tool-schemas';
+import { useContextManager } from '@/lib/hooks/use-context-manager';
+import { manageContext } from '@/lib/context-manager';
+import { wrapToolExecution } from '@/lib/tool-result-manager';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -24,7 +32,7 @@ interface KeyValuePair {
 
 interface MCPServerConfig {
   url: string;
-  type: "sse" | "stdio";
+  type: 'sse' | 'stdio';
   command?: string;
   args?: string[];
   env?: KeyValuePair[];
@@ -34,7 +42,7 @@ interface MCPServerConfig {
 export async function POST(req: Request) {
   // Extract context from URL query params
   const url = new URL(req.url);
-  const contextParam = url.searchParams.get("context");
+  const contextParam = url.searchParams.get('context');
 
   const {
     messages,
@@ -51,14 +59,14 @@ export async function POST(req: Request) {
   } = await req.json();
 
   if (!userId) {
-    return new Response(JSON.stringify({ error: "User ID is required" }), {
+    return new Response(JSON.stringify({ error: 'User ID is required' }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 
   const id = chatId || nanoid();
-  console.log(mcpServers)
+  console.log(mcpServers);
   // Check if chat already exists for the given ID
   // If not, we'll create it in onFinish
   let isNewChat = false;
@@ -69,7 +77,7 @@ export async function POST(req: Request) {
       });
       isNewChat = !existingChat;
     } catch (error) {
-      console.error("Error checking for existing chat:", error);
+      console.error('Error checking for existing chat:', error);
       // Continue anyway, we'll create the chat in onFinish
       isNewChat = true;
     }
@@ -88,56 +96,56 @@ export async function POST(req: Request) {
       // Create appropriate transport based on type
       let transport:
         | MCPTransport
-        | { type: "sse"; url: string; headers?: Record<string, string> };
+        | { type: 'sse'; url: string; headers?: Record<string, string> };
 
-      if (mcpServer.type === "sse") {
-        console.log("Using SSE transport type");
+      if (mcpServer.type === 'sse') {
+        console.log('Using SSE transport type');
         // Convert headers array to object for SSE transport
         const headers: Record<string, string> = {};
 
         transport = {
-          type: "sse" as const,
+          type: 'sse' as const,
           url: mcpServer.url,
           headers: Object.keys(headers).length > 0 ? headers : undefined,
         };
 
-        console.log("Transport configuration:", {
+        console.log('Transport configuration:', {
           type: transport.type,
           url: transport.url,
           headersPresent: transport.headers
-            ? Object.keys(transport.headers).join(", ")
-            : "none",
+            ? Object.keys(transport.headers).join(', ')
+            : 'none',
         });
 
         // Validate URL
         try {
           new URL(mcpServer.url);
-          console.log("URL is valid");
+          console.log('URL is valid');
         } catch (error) {
-          console.error("Invalid URL format:", mcpServer.url, error);
+          console.error('Invalid URL format:', mcpServer.url, error);
         }
 
         // Make a test request to check status before actual connection
-        console.log("Making test request to URL:", mcpServer.url);
+        console.log('Making test request to URL:', mcpServer.url);
         fetch(mcpServer.url, {
-          method: "HEAD",
+          method: 'HEAD',
           headers: transport.headers,
         })
           .then((response) => {
             console.log(
-              "Test request response status:",
+              'Test request response status:',
               response.status,
               response.statusText,
             );
             console.log(
-              "Test request response headers:",
+              'Test request response headers:',
               Object.fromEntries(response.headers.entries()),
             );
           })
           .catch((error) => {
-            console.error("Test request failed:", error);
+            console.error('Test request failed:', error);
           });
-      } else if (mcpServer.type === "stdio") {
+      } else if (mcpServer.type === 'stdio') {
         // For stdio transport, we need command and args
         if (
           !mcpServer.command ||
@@ -145,7 +153,7 @@ export async function POST(req: Request) {
           mcpServer.args.length === 0
         ) {
           console.warn(
-            "Skipping stdio MCP server due to missing command or args",
+            'Skipping stdio MCP server due to missing command or args',
           );
           continue;
         }
@@ -154,53 +162,53 @@ export async function POST(req: Request) {
         const env: Record<string, string> = {};
         if (mcpServer.env && mcpServer.env.length > 0) {
           mcpServer.env.forEach((envVar) => {
-            if (envVar.key) env[envVar.key] = envVar.value || "";
+            if (envVar.key) env[envVar.key] = envVar.value || '';
           });
         }
 
         // Check for uvx pattern and transform to python3 -m uv run
-        if (mcpServer.command === "uvx") {
+        if (mcpServer.command === 'uvx') {
           // install uv
-          const subprocess = spawn("pip3", ["install", "uv"]);
-          subprocess.on("close", (code: number) => {
+          const subprocess = spawn('pip3', ['install', 'uv']);
+          subprocess.on('close', (code: number) => {
             if (code !== 0) {
               console.error(`Failed to install uv: ${code}`);
             }
           });
           // wait for the subprocess to finish
           await new Promise((resolve) => {
-            subprocess.on("close", resolve);
-            console.log("installed uv");
+            subprocess.on('close', resolve);
+            console.log('installed uv');
           });
           console.log(
-            "Detected uvx pattern, transforming to python3 -m uv run",
+            'Detected uvx pattern, transforming to python3 -m uv run',
           );
-          mcpServer.command = "python3";
+          mcpServer.command = 'python3';
           // Get the tool name (first argument)
           const toolName = mcpServer.args[0];
           // Replace args with the new pattern
           mcpServer.args = [
-            "-m",
-            "uv",
-            "run",
+            '-m',
+            'uv',
+            'run',
             toolName,
             ...mcpServer.args.slice(1),
           ];
         }
         // if python is passed in the command, install the python package mentioned in args after -m with subprocess or use regex to find the package name
-        else if (mcpServer.command.includes("python3")) {
-          const packageName = mcpServer.args[mcpServer.args.indexOf("-m") + 1];
-          console.log("installing python package", packageName);
-          const subprocess = spawn("pip3", ["install", packageName]);
-          subprocess.on("close", (code: number) => {
+        else if (mcpServer.command.includes('python3')) {
+          const packageName = mcpServer.args[mcpServer.args.indexOf('-m') + 1];
+          console.log('installing python package', packageName);
+          const subprocess = spawn('pip3', ['install', packageName]);
+          subprocess.on('close', (code: number) => {
             if (code !== 0) {
               console.error(`Failed to install python package: ${code}`);
             }
           });
           // wait for the subprocess to finish
           await new Promise((resolve) => {
-            subprocess.on("close", resolve);
-            console.log("installed python package", packageName);
+            subprocess.on('close', resolve);
+            console.log('installed python package', packageName);
           });
         }
 
@@ -228,33 +236,46 @@ export async function POST(req: Request) {
         Object.keys(mcptools),
       );
 
-      // Add MCP tools to tools object
-      tools = { ...tools, ...mcptools };
+      const wrappedTools: Record<string, any> = {};
+      for (const [toolName, tool] of Object.entries(mcptools)) {
+        const originalTool = tool as any;
+
+        wrappedTools[toolName] = {
+          ...originalTool,
+          execute: wrapToolExecution(
+            toolName,
+            async (args: any, options: any) =>
+              originalTool.execute(args, options),
+          ),
+        };
+      }
+
+      tools = { ...tools, ...wrappedTools };
     } catch (error) {
-      console.error("Failed to initialize MCP client:", error);
-      console.error("MCP Server config:", mcpServer);
+      console.error('Failed to initialize MCP client:', error);
+      console.error('MCP Server config:', mcpServer);
       // Continue with other servers instead of failing the entire request
     }
   }
 
   // Register cleanup for all clients
   if (mcpClients.length > 0) {
-    req.signal.addEventListener("abort", async () => {
+    req.signal.addEventListener('abort', async () => {
       for (const client of mcpClients) {
         try {
           await client.close();
         } catch (error) {
-          console.error("Error closing MCP client:", error);
+          console.error('Error closing MCP client:', error);
         }
       }
     });
   }
 
-  console.log("messages", messages);
-  console.log(
-    "parts",
-    messages.map((m) => m.parts.map((p) => p)),
-  );
+  // console.log('messages', messages);
+  // console.log(
+  //   'parts',
+  //   messages.map((m) => m.parts.map((p) => p)),
+  // );
 
   // Use the Max AI system prompt
   const systemPrompt = `You are **Max AI**, a DeFi chat assistant running behind the Ymax DeFi product. Ymax is an intelligent DeFi command center allowing individuals to build and edit a portfolio of DeFi positions across multiple protocols and networks, which can be executed with a single signature.  Your job is to retrieve, analyze, and explain user- and asset-related information via tools. Do not invent data; if data is missing or ambiguous, state that clearly and say what you can and cannot determine from Ymax.
@@ -352,37 +373,45 @@ export async function POST(req: Request) {
   let finalSystemPrompt = systemPrompt;
   if (contextParam) {
     try {
-      const context = decodeURIComponent(contextParam) || "";
+      const context = decodeURIComponent(contextParam) || '';
       // Validate it's valid JSON
       JSON.parse(context);
       finalSystemPrompt += `\n\nThe user's wallet address is provided via Context: ${context}.
           Use this address to retrieve portfolio information, balances, positions, and other user-specific data via MCP tools.
           Do not ask the user for their wallet address - use the one provided in context and fetch all other information using available tools.`;
     } catch (error) {
-      console.error("Failed to decode context parameter:", error);
+      console.error('Failed to decode context parameter:', error);
     }
   }
 
   const coreMessages = convertToModelMessages(messages);
-  const contextResult = await useContextManager(coreMessages, {
-    maxTokens: 100_000,
+
+  // Leaving ~30k token safety margin for:
+  // - Model response generation (up to 4k tokens)
+  // - Tool calls and results (can be 5-10k+ tokens per turn)
+  // - Thinking tokens (up to 12k configured for Anthropic)
+  // - Buffer for context rot (diminishing returns as context grows)
+  const contextResult = await manageContext(coreMessages, {
+    maxTokens: 70_000, // More conservative - Anthropic recommends tight context
     keepRecentMessages: 8,
     useContextEditing: true,
     debug: false,
+    systemPrompt: finalSystemPrompt,
     contextEditConfig: {
       clearThinking: {
         enabled: true,
-        keepThinkingTurns: 2,
+        keepThinkingTurns: 1, // Only most recent - older thinking has diminishing value
       },
       clearToolUses: {
         enabled: true,
-        triggerInputTokens: 20_000,
+        triggerInputTokens: 15_000, // Start cleanup earlier
         keepToolUses: 1,
         clearAtLeastTokens: 15_000,
         excludeTools: [
-          "ymax-get-all-instruments",
-          "ymax-get-portfolio",
-          "ymax-optimize-portfolio",
+          // Removed 'ymax-get-all-instruments' - can be refetched cheaply
+          // Instruments list doesn't change often, better to refetch than keep in context
+          'ymax-get-portfolio', // Keep - changes frequently, expensive to refetch
+          'ymax-optimize-portfolio', // Keep - expensive computation
         ],
       },
     },
@@ -391,10 +420,21 @@ export async function POST(req: Request) {
   // Log context management results
   if (contextResult.wasSummarized) {
     console.log(
-      `[Ymax Context Manager] Applied ${contextResult.method}: ` +
-      `${contextResult.originalTokens} → ${contextResult.newTokens} tokens ` +
-      `(saved ${contextResult.tokensSaved})`
+      `[Context Manager] Applied ${contextResult.method}: ` +
+        `${contextResult.originalTokens} → ${contextResult.newTokens} tokens ` +
+        `(saved ${contextResult.tokensSaved})`,
     );
+
+    // Warn if still too close to limit after cleanup (Anthropic best practice)
+    const maxTokens = 70_000;
+    const utilizationPercent = Math.round(
+      (contextResult.newTokens / maxTokens) * 100,
+    );
+    if (contextResult.newTokens > maxTokens * 0.9) {
+      console.warn(
+        `[WARN] Context still at ${utilizationPercent}% after ${contextResult.method}.`,
+      );
+    }
   }
 
   // If there was an error setting up MCP clients but we at least have composio tools, continue
@@ -412,22 +452,56 @@ export async function POST(req: Request) {
       },
       anthropic: {
         thinking: {
-          type: "enabled",
+          type: 'enabled',
           budgetTokens: 12000,
         },
       },
     },
     onError: (error) => {
-      console.error(JSON.stringify(error, null, 2));
+      console.error('[Stream Error]', JSON.stringify(error, null, 2));
+
+      // Check if error is context-related
+      if (
+        error.message?.includes('context') ||
+        error.message?.includes('token') ||
+        error.message?.includes('length')
+      ) {
+        console.error(
+          '🚨 [Context Overflow] Error likely caused by context limit during streaming. ' +
+            'Tool results may have been too large despite truncation.',
+        );
+      }
     },
-    async onFinish({ response }) {
+    async onFinish({ usage, finishReason }: any) {
+      // Log streaming completion stats
+      console.log('[Stream Finished]', {
+        finishReason,
+        promptTokens: usage?.promptTokens,
+        completionTokens: usage?.completionTokens,
+        totalTokens: usage?.totalTokens,
+      });
+
+      // Warn if we hit token limits
+      if (finishReason === 'length' || finishReason === 'max-tokens') {
+        console.warn(
+          '⚠️ [Stream] Response truncated due to token limit. Consider reducing maxTokens or tool result sizes.',
+        );
+      }
+
+      // Monitor total token usage
+      if (usage?.totalTokens && usage.totalTokens > 80_000) {
+        console.warn(
+          `⚠️ [High Token Usage] ${usage.totalTokens.toLocaleString()} tokens used. ` +
+            `Close to context limits.`,
+        );
+      }
+
       // In v5, response.messages already contains all formatted messages
       // await saveChat({
       //   id,
       //   userId,
       //   messages: response.messages,
       // });
-
       // const dbMessages = convertToDBMessages(response.messages, id);
       // await saveMessages({ messages: dbMessages });
       // close all mcp clients
@@ -441,7 +515,7 @@ export async function POST(req: Request) {
     originalMessages: messages,
     sendReasoning: true, // Enable streaming of reasoning/thinking content
     headers: {
-      "Content-Type": "text/event-stream",
+      'Content-Type': 'text/event-stream',
     },
   });
 }
