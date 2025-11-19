@@ -11,8 +11,8 @@ import {
 } from "@ai-sdk/mcp";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { spawn } from "child_process";
-import { anthropic } from '@ai-sdk/anthropic';
 import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-tool-schemas";
+import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -249,6 +249,9 @@ export async function POST(req: Request) {
       }
     });
   }
+
+  // Add Anthropic Web Search Tool if using Claude models
+  tools = addAnthropicWebTools(selectedModel, tools);
 
   console.log("messages", messages);
   console.log(

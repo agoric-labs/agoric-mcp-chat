@@ -9,6 +9,7 @@ import { experimental_createMCPClient as createMCPClient, type MCPTransport } fr
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { spawn } from "child_process";
 import { agoricMcpToolSchemas } from "@/lib/mcp/agoric-tool-schemas";
+import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -219,6 +220,9 @@ export async function POST(req: Request) {
       }
     });
   }
+
+  // Add Anthropic Web Search Tool if using Claude models
+  tools = addAnthropicWebTools(selectedModel, tools);
 
   console.log("messages", messages);
   console.log("parts", messages.map(m => m.parts.map(p => p)));
