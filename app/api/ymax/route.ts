@@ -1,23 +1,18 @@
-import { model, type modelID } from '@/ai/providers';
-import {
-  streamText,
-  type UIMessage,
-  convertToModelMessages,
-  stepCountIs,
-} from 'ai';
-import { nanoid } from 'nanoid';
-import { db } from '@/lib/db';
-import { chats } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { model, type modelID } from "@/ai/providers";
+import { streamText, type UIMessage, convertToModelMessages, stepCountIs } from "ai";
+import { nanoid } from "nanoid";
+import { db } from "@/lib/db";
+import { chats } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 
 import {
   experimental_createMCPClient as createMCPClient,
   type MCPTransport,
-} from '@ai-sdk/mcp';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { spawn } from 'child_process';
+} from "@ai-sdk/mcp";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { spawn } from "child_process";
 import { anthropic } from '@ai-sdk/anthropic';
-import { ymaxMcptoolSchemas } from '@/lib/mcp/ymax-tool-schemas';
+import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-tool-schemas";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -29,7 +24,7 @@ interface KeyValuePair {
 
 interface MCPServerConfig {
   url: string;
-  type: 'sse' | 'stdio';
+  type: "sse" | "stdio";
   command?: string;
   args?: string[];
   env?: KeyValuePair[];
@@ -39,7 +34,7 @@ interface MCPServerConfig {
 export async function POST(req: Request) {
   // Extract context from URL query params
   const url = new URL(req.url);
-  const contextParam = url.searchParams.get('context');
+  const contextParam = url.searchParams.get("context");
 
   const {
     messages,
@@ -56,9 +51,9 @@ export async function POST(req: Request) {
   } = await req.json();
 
   if (!userId) {
-    return new Response(JSON.stringify({ error: 'User ID is required' }), {
+    return new Response(JSON.stringify({ error: "User ID is required" }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
     });
   }
 
@@ -74,7 +69,7 @@ export async function POST(req: Request) {
       });
       isNewChat = !existingChat;
     } catch (error) {
-      console.error('Error checking for existing chat:', error);
+      console.error("Error checking for existing chat:", error);
       // Continue anyway, we'll create the chat in onFinish
       isNewChat = true;
     }
@@ -93,56 +88,56 @@ export async function POST(req: Request) {
       // Create appropriate transport based on type
       let transport:
         | MCPTransport
-        | { type: 'sse'; url: string; headers?: Record<string, string> };
+        | { type: "sse"; url: string; headers?: Record<string, string> };
 
-      if (mcpServer.type === 'sse') {
-        console.log('Using SSE transport type');
+      if (mcpServer.type === "sse") {
+        console.log("Using SSE transport type");
         // Convert headers array to object for SSE transport
         const headers: Record<string, string> = {};
 
         transport = {
-          type: 'sse' as const,
+          type: "sse" as const,
           url: mcpServer.url,
           headers: Object.keys(headers).length > 0 ? headers : undefined,
         };
 
-        console.log('Transport configuration:', {
+        console.log("Transport configuration:", {
           type: transport.type,
           url: transport.url,
           headersPresent: transport.headers
-            ? Object.keys(transport.headers).join(', ')
-            : 'none',
+            ? Object.keys(transport.headers).join(", ")
+            : "none",
         });
 
         // Validate URL
         try {
           new URL(mcpServer.url);
-          console.log('URL is valid');
+          console.log("URL is valid");
         } catch (error) {
-          console.error('Invalid URL format:', mcpServer.url, error);
+          console.error("Invalid URL format:", mcpServer.url, error);
         }
 
         // Make a test request to check status before actual connection
-        console.log('Making test request to URL:', mcpServer.url);
+        console.log("Making test request to URL:", mcpServer.url);
         fetch(mcpServer.url, {
-          method: 'HEAD',
+          method: "HEAD",
           headers: transport.headers,
         })
           .then((response) => {
             console.log(
-              'Test request response status:',
+              "Test request response status:",
               response.status,
               response.statusText,
             );
             console.log(
-              'Test request response headers:',
+              "Test request response headers:",
               Object.fromEntries(response.headers.entries()),
             );
           })
           .catch((error) => {
-            console.error('Test request failed:', error);
+            console.error("Test request failed:", error);
           });
-      } else if (mcpServer.type === 'stdio') {
+      } else if (mcpServer.type === "stdio") {
         // For stdio transport, we need command and args
         if (
           !mcpServer.command ||
@@ -150,7 +145,7 @@ export async function POST(req: Request) {
           mcpServer.args.length === 0
         ) {
           console.warn(
-            'Skipping stdio MCP server due to missing command or args',
+            "Skipping stdio MCP server due to missing command or args",
           );
           continue;
         }
@@ -159,53 +154,53 @@ export async function POST(req: Request) {
         const env: Record<string, string> = {};
         if (mcpServer.env && mcpServer.env.length > 0) {
           mcpServer.env.forEach((envVar) => {
-            if (envVar.key) env[envVar.key] = envVar.value || '';
+            if (envVar.key) env[envVar.key] = envVar.value || "";
           });
         }
 
         // Check for uvx pattern and transform to python3 -m uv run
-        if (mcpServer.command === 'uvx') {
+        if (mcpServer.command === "uvx") {
           // install uv
-          const subprocess = spawn('pip3', ['install', 'uv']);
-          subprocess.on('close', (code: number) => {
+          const subprocess = spawn("pip3", ["install", "uv"]);
+          subprocess.on("close", (code: number) => {
             if (code !== 0) {
               console.error(`Failed to install uv: ${code}`);
             }
           });
           // wait for the subprocess to finish
           await new Promise((resolve) => {
-            subprocess.on('close', resolve);
-            console.log('installed uv');
+            subprocess.on("close", resolve);
+            console.log("installed uv");
           });
           console.log(
-            'Detected uvx pattern, transforming to python3 -m uv run',
+            "Detected uvx pattern, transforming to python3 -m uv run",
           );
-          mcpServer.command = 'python3';
+          mcpServer.command = "python3";
           // Get the tool name (first argument)
           const toolName = mcpServer.args[0];
           // Replace args with the new pattern
           mcpServer.args = [
-            '-m',
-            'uv',
-            'run',
+            "-m",
+            "uv",
+            "run",
             toolName,
             ...mcpServer.args.slice(1),
           ];
         }
         // if python is passed in the command, install the python package mentioned in args after -m with subprocess or use regex to find the package name
-        else if (mcpServer.command.includes('python3')) {
-          const packageName = mcpServer.args[mcpServer.args.indexOf('-m') + 1];
-          console.log('installing python package', packageName);
-          const subprocess = spawn('pip3', ['install', packageName]);
-          subprocess.on('close', (code: number) => {
+        else if (mcpServer.command.includes("python3")) {
+          const packageName = mcpServer.args[mcpServer.args.indexOf("-m") + 1];
+          console.log("installing python package", packageName);
+          const subprocess = spawn("pip3", ["install", packageName]);
+          subprocess.on("close", (code: number) => {
             if (code !== 0) {
               console.error(`Failed to install python package: ${code}`);
             }
           });
           // wait for the subprocess to finish
           await new Promise((resolve) => {
-            subprocess.on('close', resolve);
-            console.log('installed python package', packageName);
+            subprocess.on("close", resolve);
+            console.log("installed python package", packageName);
           });
         }
 
@@ -236,28 +231,28 @@ export async function POST(req: Request) {
       // Add MCP tools to tools object
       tools = { ...tools, ...mcptools };
     } catch (error) {
-      console.error('Failed to initialize MCP client:', error);
-      console.error('MCP Server config:', mcpServer);
+      console.error("Failed to initialize MCP client:", error);
+      console.error("MCP Server config:", mcpServer);
       // Continue with other servers instead of failing the entire request
     }
   }
 
   // Register cleanup for all clients
   if (mcpClients.length > 0) {
-    req.signal.addEventListener('abort', async () => {
+    req.signal.addEventListener("abort", async () => {
       for (const client of mcpClients) {
         try {
           await client.close();
         } catch (error) {
-          console.error('Error closing MCP client:', error);
+          console.error("Error closing MCP client:", error);
         }
       }
     });
   }
 
-  console.log('messages', messages);
+  console.log("messages", messages);
   console.log(
-    'parts',
+    "parts",
     messages.map((m) => m.parts.map((p) => p)),
   );
 
@@ -350,35 +345,28 @@ export async function POST(req: Request) {
 
   # Support escalation
   When issues require human intervention, provide a brief summary of the problem, then direct users to the appropriate channel:
-
   **Escalation triggers:**
   - Tool errors or backend outages
   - Incomplete/missing transaction data after reasonable attempts
   - Security concerns or suspicious activity
   - Manual verification needed
   - User explicitly requests human help
-
   **Channel selection guidelines:**
-
   1. **URGENT/SECURITY issues** (stuck funds, security concerns, failed high-value transactions):
      - **Discord** (primary, fastest response): https://agoric.com/discord
      - Provide: Transaction hash, issue timestamp, brief description
      - Message template: "This requires urgent review. Please contact support immediately: https://agoric.com/discord and provide [specific details you've gathered]"
-
   2. **Technical issues** (tool errors, data inconsistencies, tracking problems):
      - **Discord**: https://agoric.com/discord (for real-time troubleshooting)
      - **Ymax app feedback form**: https://ymax.app (bottom right corner) - Select "Bug Report" category
      - Provide: Error message, tool name that failed, steps to reproduce
-
   3. **Product feedback** (feature requests, UX suggestions, general questions):
      - **Ymax app feedback form**: https://ymax.app (bottom right corner) - Select appropriate category
      - **X (Twitter)**: https://x.com/ymaxapp (for public feature discussions)
-
   **Context to include when escalating:**
   - Briefly summarize what you attempted and what failed
   - Include relevant transaction hashes or tool names
   - Specify what data is missing or incomplete
-  
   **Strict Prohibitions**:
   (1) Use ONLY these three official support channels - no emails, phone numbers, third-party sites, or unofficial Discord servers
   (2) Never fabricate support channels or contact methods
@@ -393,14 +381,14 @@ export async function POST(req: Request) {
   let finalSystemPrompt = systemPrompt;
   if (contextParam) {
     try {
-      const context = decodeURIComponent(contextParam) || '';
+      const context = decodeURIComponent(contextParam) || "";
       // Validate it's valid JSON
       JSON.parse(context);
       finalSystemPrompt += `\n\nThe user's wallet address is provided via Context: ${context}.
           Use this address to retrieve portfolio information, balances, positions, and other user-specific data via MCP tools.
           Do not ask the user for their wallet address - use the one provided in context and fetch all other information using available tools.`;
     } catch (error) {
-      console.error('Failed to decode context parameter:', error);
+      console.error("Failed to decode context parameter:", error);
     }
   }
 
@@ -419,7 +407,7 @@ export async function POST(req: Request) {
       },
       anthropic: {
         thinking: {
-          type: 'enabled',
+          type: "enabled",
           budgetTokens: 12000,
         },
       },
@@ -434,6 +422,7 @@ export async function POST(req: Request) {
       //   userId,
       //   messages: response.messages,
       // });
+
       // const dbMessages = convertToDBMessages(response.messages, id);
       // await saveMessages({ messages: dbMessages });
       // close all mcp clients
@@ -447,7 +436,7 @@ export async function POST(req: Request) {
     originalMessages: messages,
     sendReasoning: true, // Enable streaming of reasoning/thinking content
     headers: {
-      'Content-Type': 'text/event-stream',
+      "Content-Type": "text/event-stream",
     },
   });
 }
