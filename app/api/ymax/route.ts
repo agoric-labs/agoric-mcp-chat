@@ -17,9 +17,7 @@ import {
 } from '@ai-sdk/mcp';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { spawn } from 'child_process';
-import { anthropic } from '@ai-sdk/anthropic';
 import { ymaxMcptoolSchemas } from '@/lib/mcp/ymax-tool-schemas';
-import { useContextManager } from '@/lib/hooks/use-context-manager';
 import { manageContext } from '@/lib/context-manager';
 import { wrapToolExecution } from '@/lib/tool-result-manager';
 
