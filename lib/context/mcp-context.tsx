@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useLocalStorage } from '@/lib/hooks/use-local-storage';
-import { STORAGE_KEYS } from '@/lib/constants';
-import { useSearchParams } from 'next/navigation';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { useLocalStorage } from "@/lib/hooks/use-local-storage";
+import { STORAGE_KEYS } from "@/lib/constants";
+import { useSearchParams } from "next/navigation";
 
 // Define types for MCP server
 export interface KeyValuePair {
@@ -15,7 +15,7 @@ export interface MCPServer {
   id: string;
   name: string;
   url: string;
-  type: 'sse' | 'stdio';
+  type: "sse" | "stdio";
   command?: string;
   args?: string[];
   env?: KeyValuePair[];
@@ -25,7 +25,7 @@ export interface MCPServer {
 
 // Type for processed MCP server config for API
 export interface MCPServerApi {
-  type: 'sse' | 'stdio';
+  type: "sse" | "stdio";
   url: string;
   command?: string;
   args?: string[];
@@ -42,13 +42,13 @@ interface MCPContextType {
 }
 
 const MCPContext = createContext<MCPContextType | undefined>(undefined);
-const DEFAULT_MCP_SERVER_ID = 'agoric-mcp-server';
+const DEFAULT_MCP_SERVER_ID = "agoric-mcp-server";
 
 const DEFAULT_MCP_SERVER: MCPServer = {
   id: DEFAULT_MCP_SERVER_ID,
-  name: 'Agoric MCP Server',
-  type: 'sse',
-  url: 'http://127.0.0.1:8787/sse',
+  name: "Agoric MCP Server",
+  type: "sse",
+  url: "https://ymax-mcp-server.agoric-core.workers.dev/sse",
 };
 
 export function MCPProvider(props: { children: React.ReactNode }) {
@@ -56,11 +56,12 @@ export function MCPProvider(props: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const useAgoricWebsiteMCP =
     decodeURIComponent(
-      searchParams.get('useAgoricWebsiteMCP') || '',
-    ).toLowerCase() === 'true';
+      searchParams.get("useAgoricWebsiteMCP") || "",
+    ).toLowerCase() === "true";
 
   if (useAgoricWebsiteMCP) {
-    DEFAULT_MCP_SERVER.url = 'http://127.0.0.1:8787/sse';
+    DEFAULT_MCP_SERVER.url =
+      "https://agoric-mcp-devops-server.agoric-core.workers.dev/sse";
   }
   const [_mcpServers, setMcpServers] = useLocalStorage<MCPServer[]>(
     STORAGE_KEYS.MCP_SERVERS,
@@ -130,7 +131,7 @@ export function MCPProvider(props: { children: React.ReactNode }) {
 export function useMCP() {
   const context = useContext(MCPContext);
   if (context === undefined) {
-    throw new Error('useMCP must be used within an MCPProvider');
+    throw new Error("useMCP must be used within an MCPProvider");
   }
   return context;
 }
