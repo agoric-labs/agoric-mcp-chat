@@ -23,10 +23,6 @@ export function addAnthropicWebTools(
   existingTools: Record<string, unknown> = {},
   config: AnthropicWebToolsConfig = {}
 ): Record<string, unknown> {
-  // Only add web tools for Claude models
-  if (!selectedModel.startsWith('claude-')) {
-    return existingTools;
-  }
 
   const {
     maxUses = 5,

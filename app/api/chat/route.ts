@@ -222,7 +222,9 @@ export async function POST(req: Request) {
   }
 
   // Add Anthropic Web Search Tool if using Claude models
-  tools = addAnthropicWebTools(selectedModel, tools);
+  if (selectedModel.startsWith('claude-')) {
+    tools = addAnthropicWebTools(selectedModel, tools);
+  }
 
   console.log("messages", messages);
   console.log("parts", messages.map(m => m.parts.map(p => p)));
