@@ -1,6 +1,10 @@
 import { model, type modelID } from '@/ai/providers';
-import { streamText, type UIMessage } from 'ai';
-import { appendResponseMessages } from 'ai';
+import {
+  streamText,
+  type UIMessage,
+  convertToModelMessages,
+  stepCountIs,
+} from 'ai';
 import { nanoid } from 'nanoid';
 import { db } from '@/lib/db';
 import { chats } from '@/lib/db/schema';
@@ -8,10 +12,12 @@ import { eq, and } from 'drizzle-orm';
 
 import {
   experimental_createMCPClient as createMCPClient,
-  MCPTransport,
-} from 'ai';
-import { Experimental_StdioMCPTransport as StdioMCPTransport } from 'ai/mcp-stdio';
+  type MCPTransport,
+} from '@ai-sdk/mcp';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { spawn } from 'child_process';
+import { anthropic } from '@ai-sdk/anthropic';
+import { ymaxMcptoolSchemas } from '@/lib/mcp/ymax-tool-schemas';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -203,7 +209,7 @@ export async function POST(req: Request) {
           });
         }
 
-        transport = new StdioMCPTransport({
+        transport = new StdioClientTransport({
           command: mcpServer.command,
           args: mcpServer.args,
           env: Object.keys(env).length > 0 ? env : undefined,
@@ -218,7 +224,9 @@ export async function POST(req: Request) {
       const mcpClient = await createMCPClient({ transport });
       mcpClients.push(mcpClient);
 
-      const mcptools = await mcpClient.tools();
+      const mcptools = await mcpClient.tools({
+        schemas: ymaxMcptoolSchemas,
+      });
 
       console.log(
         `MCP tools from ${mcpServer.type} transport:`,
@@ -402,9 +410,9 @@ export async function POST(req: Request) {
   const result = streamText({
     model: model.languageModel(selectedModel),
     system: finalSystemPrompt,
-    messages,
+    messages: convertToModelMessages(messages),
     tools,
-    maxSteps: 20,
+    stopWhen: stepCountIs(20),
     providerOptions: {
       google: {
         thinkingConfig: {
@@ -422,18 +430,13 @@ export async function POST(req: Request) {
       console.error(JSON.stringify(error, null, 2));
     },
     async onFinish({ response }) {
-      const allMessages = appendResponseMessages({
-        messages,
-        responseMessages: response.messages,
-      });
-
+      // In v5, response.messages already contains all formatted messages
       // await saveChat({
       //   id,
       //   userId,
-      //   messages: allMessages,
+      //   messages: response.messages,
       // });
-
-      // const dbMessages = convertToDBMessages(allMessages, id);
+      // const dbMessages = convertToDBMessages(response.messages, id);
       // await saveMessages({ messages: dbMessages });
       // close all mcp clients
       // for (const client of mcpClients) {
@@ -442,23 +445,11 @@ export async function POST(req: Request) {
     },
   });
 
-  result.consumeStream();
-  return result.toDataStreamResponse({
-    sendReasoning: true,
-    getErrorMessage: (error) => {
-      if (error instanceof Error) {
-        if (error.message.includes('Rate limit')) {
-          return 'Rate limit exceeded. Please try again later.';
-        }
-        if (
-          error.message.includes('prompt is too long') ||
-          error.message.includes('tokens >')
-        ) {
-          return 'The request is too large. Please try starting a new chat.';
-        }
-      }
-      console.error(error);
-      return 'An error occurred.';
+  return result.toUIMessageStreamResponse({
+    originalMessages: messages,
+    sendReasoning: true, // Enable streaming of reasoning/thinking content
+    headers: {
+      'Content-Type': 'text/event-stream',
     },
   });
 }

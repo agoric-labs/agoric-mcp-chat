@@ -41,9 +41,13 @@ export async function generateTitle(messages: any[]) {
     role: msg.role,
     content: getMessageText(msg)
   }));
-  
+
   const { object } = await generateObject({
-    model: openai("gpt-4.1"),
+    /* The API change from openai("model-name") to openai.chat("model-name") 
+    is documented in: 
+    https://ai-sdk.dev/docs/migration-guides/migration-guide-5-0#structured-outputs
+    */
+    model: openai.chat("gpt-4.1"),
     schema: z.object({
       title: z.string().min(1).max(100),
     }),
