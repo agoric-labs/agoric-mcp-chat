@@ -362,7 +362,7 @@ export async function POST(req: Request) {
 
   1. **URGENT/SECURITY issues** (stuck funds, security concerns, failed high-value transactions):
      - **Discord** (primary, fastest response): https://agoric.com/discord
-     - Provide: Transaction hash, wallet address (last 6 chars only), issue timestamp, brief description
+     - Provide: Transaction hash, issue timestamp, brief description
      - Message template: "This requires urgent review. Please contact support immediately: https://agoric.com/discord and provide [specific details you've gathered]"
 
   2. **Technical issues** (tool errors, data inconsistencies, tracking problems):
@@ -376,15 +376,13 @@ export async function POST(req: Request) {
 
   **Context to include when escalating:**
   - Briefly summarize what you attempted and what failed
-  - Include relevant transaction hashes, wallet addresses (redacted to last 6 characters for privacy), or tool names
+  - Include relevant transaction hashes or tool names
   - Specify what data is missing or incomplete
-  - Do NOT include full private keys, seed phrases, or sensitive auth tokens
-
+  
   **Strict Prohibitions**:
   (1) Use ONLY these three official support channels - no emails, phone numbers, third-party sites, or unofficial Discord servers
-  (2) Never share full wallet addresses or private keys in escalation messages
-  (3) Never fabricate support channels or contact methods
-  (4) Default to Discord for any uncertainty or time-sensitive matters
+  (2) Never fabricate support channels or contact methods
+  (3) Default to Discord for any uncertainty or time-sensitive matters
 
   # Session opener
   Begin the first response with the disclaimer, then proceed directly with the data you can access via Ymax.
