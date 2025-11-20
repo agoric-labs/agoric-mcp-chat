@@ -1,35 +1,37 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { ChatSidebar } from "@/components/chat-sidebar";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Menu } from "lucide-react";
-import { Providers } from "./providers";
-import { SplashScreen } from "@/components/splash-screen";
-import "./globals.css";
-import Script from "next/script";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import { ChatSidebar } from '@/components/chat-sidebar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Menu } from 'lucide-react';
+import { Providers } from './providers';
+import { SplashScreen } from '@/components/splash-screen';
+import './globals.css';
+import Script from 'next/script';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mcp.scira.ai"),
-  title: "Agoric AI Chat",
-  description: "Agoric AI Chat is a minimalistic MCP client with a good feature set.",
+  metadataBase: new URL('https://mcp.scira.ai'),
+  title: 'Agoric AI Chat',
+  description:
+    'Agoric AI Chat is a minimalistic MCP client with a good feature set.',
   openGraph: {
-    siteName: "Agoric AI Chat",
-    url: "https://mcp.scira.ai",
+    siteName: 'Agoric AI Chat',
+    url: 'https://mcp.scira.ai',
     images: [
       {
-        url: "https://mcp.scira.ai/opengraph-image.png",
+        url: 'https://mcp.scira.ai/opengraph-image.png',
         width: 1200,
         height: 630,
       },
     ],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Agoric AI Chat",
-    description: "Agoric AI Chat is a minimalistic MCP client with a good feature set.",
-    images: ["https://mcp.scira.ai/twitter-image.png"],
+    card: 'summary_large_image',
+    title: 'Agoric AI Chat',
+    description:
+      'Agoric AI Chat is a minimalistic MCP client with a good feature set.',
+    images: ['https://mcp.scira.ai/twitter-image.png'],
   },
 };
 
@@ -53,13 +55,15 @@ export default function RootLayout({
                   </button>
                 </SidebarTrigger>
               </div>
-              <div className="flex-1 flex justify-center">
-                {children}
-              </div>
+              <div className="flex-1 flex justify-center">{children}</div>
             </main>
           </div>
         </Providers>
-        <Script defer src="https://cloud.umami.is/script.js" data-website-id="1373896a-fb20-4c9d-b718-c723a2471ae5" />
+        <Script
+          defer
+          src="https://cloud.umami.is/script.js"
+          data-website-id="1373896a-fb20-4c9d-b718-c723a2471ae5"
+        />
       </body>
     </html>
   );

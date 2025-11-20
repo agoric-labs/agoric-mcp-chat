@@ -1,16 +1,21 @@
-"use client";
+'use client';
 
-import type { UIMessage as TMessage } from "ai";
-import { AnimatePresence, motion } from "framer-motion";
-import { memo, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import equal from "fast-deep-equal";
-import { Markdown } from "./markdown";
-import { cn } from "@/lib/utils";
-import { ChevronDownIcon, ChevronUpIcon, LightbulbIcon, BrainIcon } from "lucide-react";
-import { SpinnerIcon } from "./icons";
-import { ToolInvocation } from "./tool-invocation";
-import { CopyButton } from "./copy-button";
+import type { UIMessage as TMessage } from 'ai';
+import { AnimatePresence, motion } from 'framer-motion';
+import { memo, useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import equal from 'fast-deep-equal';
+import { Markdown } from './markdown';
+import { cn } from '@/lib/utils';
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  LightbulbIcon,
+  BrainIcon,
+} from 'lucide-react';
+import { SpinnerIcon } from './icons';
+import { ToolInvocation } from './tool-invocation';
+import { CopyButton } from './copy-button';
 
 // Helper function to remove context from display text
 const cleanDisplayText = (text: string): string => {
@@ -20,9 +25,9 @@ const cleanDisplayText = (text: string): string => {
 };
 
 interface ReasoningPart {
-  type: "reasoning";
+  type: 'reasoning';
   text: string; // AI SDK v5 uses 'text' not 'reasoning'
-  state?: "streaming" | "done"; // Track streaming state
+  state?: 'streaming' | 'done'; // Track streaming state
 }
 
 interface ReasoningMessagePartProps {
@@ -47,11 +52,13 @@ export function ReasoningMessagePart({
   return (
     <div className="flex flex-col mb-2 group">
       {isReasoning ? (
-        <div className={cn(
-          "flex items-center gap-2.5 rounded-full py-1.5 px-3",
-          "bg-indigo-50/50 dark:bg-indigo-900/10 text-indigo-700 dark:text-indigo-300",
-          "border border-indigo-200/50 dark:border-indigo-700/20 w-fit"
-        )}>
+        <div
+          className={cn(
+            'flex items-center gap-2.5 rounded-full py-1.5 px-3',
+            'bg-indigo-50/50 dark:bg-indigo-900/10 text-indigo-700 dark:text-indigo-300',
+            'border border-indigo-200/50 dark:border-indigo-700/20 w-fit',
+          )}
+        >
           <div className="animate-spin h-3.5 w-3.5">
             <SpinnerIcon />
           </div>
@@ -61,35 +68,39 @@ export function ReasoningMessagePart({
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className={cn(
-            "flex items-center justify-between w-full",
-            "rounded-md py-2 px-3 mb-0.5",
-            "bg-muted/50 border border-border/60 hover:border-border/80",
-            "transition-all duration-150 cursor-pointer",
-            isExpanded ? "bg-muted border-primary/20" : ""
+            'flex items-center justify-between w-full',
+            'rounded-md py-2 px-3 mb-0.5',
+            'bg-muted/50 border border-border/60 hover:border-border/80',
+            'transition-all duration-150 cursor-pointer',
+            isExpanded ? 'bg-muted border-primary/20' : '',
           )}
         >
           <div className="flex items-center gap-2.5">
-            <div className={cn(
-              "flex items-center justify-center w-6 h-6 rounded-full",
-              "bg-amber-50 dark:bg-amber-900/20",
-              "text-amber-600 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-700/30",
-            )}>
+            <div
+              className={cn(
+                'flex items-center justify-center w-6 h-6 rounded-full',
+                'bg-amber-50 dark:bg-amber-900/20',
+                'text-amber-600 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-700/30',
+              )}
+            >
               <LightbulbIcon className="h-3.5 w-3.5" />
             </div>
             <div className="text-sm font-medium text-foreground flex items-center gap-1.5">
               Reasoning
               <span className="text-xs text-muted-foreground font-normal">
-                (click to {isExpanded ? "hide" : "view"})
+                (click to {isExpanded ? 'hide' : 'view'})
               </span>
             </div>
           </div>
-          <div className={cn(
-            "flex items-center justify-center",
-            "rounded-full p-0.5 w-5 h-5",
-            "text-muted-foreground hover:text-foreground",
-            "bg-background/80 border border-border/50",
-            "transition-colors",
-          )}>
+          <div
+            className={cn(
+              'flex items-center justify-center',
+              'rounded-full p-0.5 w-5 h-5',
+              'text-muted-foreground hover:text-foreground',
+              'bg-background/80 border border-border/50',
+              'transition-colors',
+            )}
+          >
             {isExpanded ? (
               <ChevronDownIcon className="h-3 w-3" />
             ) : (
@@ -104,20 +115,20 @@ export function ReasoningMessagePart({
           <motion.div
             key="reasoning"
             className={cn(
-              "text-sm text-muted-foreground flex flex-col gap-2",
-              "pl-3.5 ml-0.5 mt-1",
-              "border-l border-amber-200/50 dark:border-amber-700/30"
+              'text-sm text-muted-foreground flex flex-col gap-2',
+              'pl-3.5 ml-0.5 mt-1',
+              'border-l border-amber-200/50 dark:border-amber-700/30',
             )}
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
+            animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
             <div className="text-xs text-muted-foreground/70 pl-1 font-medium">
               The assistant&apos;s thought process:
             </div>
             <div className="px-2 py-1.5 bg-muted/10 rounded-md border border-border/30">
-              <Markdown>{part.text || "Thinking..."}</Markdown>
+              <Markdown>{part.text || 'Thinking...'}</Markdown>
             </div>
           </motion.div>
         )}
@@ -133,31 +144,35 @@ const PurePreviewMessage = ({
 }: {
   message: TMessage;
   isLoading: boolean;
-  status: "error" | "submitted" | "streaming" | "ready";
+  status: 'error' | 'submitted' | 'streaming' | 'ready';
   isLatestMessage: boolean;
 }) => {
   const searchParams = useSearchParams();
-  const hideTools = searchParams.get("hideTools") === "true";
-  const hideReasoning = searchParams.get("hideReasoning") === "true";
+  const hideTools = searchParams.get('hideTools') === 'true';
+  const hideReasoning = searchParams.get('hideReasoning') === 'true';
 
   // Create a string with all text parts for copy functionality
   const getMessageText = () => {
-    if (!message.parts) return "";
+    if (!message.parts) return '';
     return message.parts
-      .filter(part => part.type === "text")
-      .map(part => (part.type === "text" ? part.text : ""))
-      .join("\n\n");
+      .filter(part => part.type === 'text')
+      .map(part => (part.type === 'text' ? part.text : ''))
+      .join('\n\n');
   };
 
   // Only show copy button if the message is from the assistant and not currently streaming
-  const shouldShowCopyButton = message.role === "assistant" && (!isLatestMessage || status !== "streaming");
+  const shouldShowCopyButton =
+    message.role === 'assistant' &&
+    (!isLatestMessage || status !== 'streaming');
 
   return (
     <AnimatePresence key={message.id}>
       <motion.div
         className={cn(
-          "w-full mx-auto px-1 xs:px-2 sm:px-4 group/message break-words overflow-x-auto",
-          message.role === "assistant" ? "mb-4 xs:mb-6 sm:mb-8" : "mb-3 xs:mb-4 sm:mb-6"
+          'w-full mx-auto px-1 xs:px-2 sm:px-4 group/message break-words overflow-x-auto',
+          message.role === 'assistant'
+            ? 'mb-4 xs:mb-6 sm:mb-8'
+            : 'mb-3 xs:mb-4 sm:mb-6',
         )}
         initial={{ y: 5, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -166,14 +181,14 @@ const PurePreviewMessage = ({
       >
         <div
           className={cn(
-            "flex gap-2 xs:gap-4 w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl",
-            "group-data-[role=user]/message:w-fit min-w-0 break-words overflow-x-auto",
+            'flex gap-2 xs:gap-4 w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl',
+            'group-data-[role=user]/message:w-fit min-w-0 break-words overflow-x-auto',
           )}
         >
           <div className="flex flex-col w-full space-y-3 min-w-0">
             {message.parts?.map((part, i) => {
               // Handle text parts
-              if (part.type === "text") {
+              if (part.type === 'text') {
                 return (
                   <motion.div
                     initial={{ y: 5, opacity: 0 }}
@@ -182,16 +197,21 @@ const PurePreviewMessage = ({
                     className="flex flex-row gap-2 items-start w-full min-w-0"
                   >
                     <div
-                      className={cn("flex flex-col gap-3 w-full min-w-0 break-words overflow-x-auto", {
-                        "bg-secondary text-secondary-foreground px-2 xs:px-3 sm:px-4 py-2 xs:py-3 rounded-2xl":
-                          message.role === "user",
-                      })}
+                      className={cn(
+                        'flex flex-col gap-3 w-full min-w-0 break-words overflow-x-auto',
+                        {
+                          'bg-secondary text-secondary-foreground px-2 xs:px-3 sm:px-4 py-2 xs:py-3 rounded-2xl':
+                            message.role === 'user',
+                        },
+                      )}
                     >
                       <Markdown
                         messageId={message.id}
-                        isEditable={message.role === "assistant"}
+                        isEditable={message.role === 'assistant'}
                       >
-                        {message.role === "user" ? cleanDisplayText(part.text) : part.text}
+                        {message.role === 'user'
+                          ? cleanDisplayText(part.text)
+                          : part.text}
                       </Markdown>
                     </div>
                   </motion.div>
@@ -199,7 +219,7 @@ const PurePreviewMessage = ({
               }
 
               // Handle tool parts (v5 format: tool-{toolName})
-              if (part.type.startsWith("tool-")) {
+              if (part.type.startsWith('tool-')) {
                 if (hideTools) return null;
 
                 const toolName = part.type.substring(5); // Remove "tool-" prefix
@@ -223,15 +243,15 @@ const PurePreviewMessage = ({
 
               // Handle other part types
               switch (part.type) {
-                case "reasoning":
+                case 'reasoning':
                   if (hideReasoning) return null;
 
                   // Check if this specific reasoning part is currently streaming
                   const reasoningPart = part as any;
                   const isReasoningStreaming =
                     isLatestMessage &&
-                    status === "streaming" &&
-                    reasoningPart.state === "streaming";
+                    status === 'streaming' &&
+                    reasoningPart.state === 'streaming';
 
                   return (
                     <ReasoningMessagePart
@@ -259,7 +279,8 @@ const PurePreviewMessage = ({
 export const Message = memo(PurePreviewMessage, (prevProps, nextProps) => {
   if (prevProps.status !== nextProps.status) return false;
 
-  if (nextProps.isLatestMessage && nextProps.status === "streaming") return false;
+  if (nextProps.isLatestMessage && nextProps.status === 'streaming')
+    return false;
 
   if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
 

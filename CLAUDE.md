@@ -25,18 +25,21 @@ This is a Next.js 15 AI chat application that integrates with Model Context Prot
 ### Core Architecture
 
 **Frontend:**
+
 - Next.js 15 with App Router
 - React 19 with Suspense
 - Tailwind CSS + shadcn/ui components
 - Context providers for MCP server management and editor state
 
 **Backend:**
+
 - Next.js API routes for chat functionality
 - Drizzle ORM with PostgreSQL (Neon)
 - AI SDK by Vercel for multi-provider AI integration
 - MCP client integration for tool access
 
 **Key Components:**
+
 - `lib/context/mcp-context.tsx` - Manages MCP server configurations and selection
 - `app/api/chat/route.ts` - Main chat API endpoint with MCP integration
 - `app/api/ymax/route.ts` - Portfolio optimization API with CORS support
@@ -46,6 +49,7 @@ This is a Next.js 15 AI chat application that integrates with Model Context Prot
 ### MCP Integration
 
 The application supports two MCP transport types:
+
 - **SSE (Server-Sent Events)**: For HTTP-based remote MCP servers
 - **stdio**: For local MCP servers running as processes
 
@@ -54,6 +58,7 @@ MCP servers are configured through the UI and stored in localStorage. The chat A
 ### Database Schema
 
 Uses Drizzle ORM with these main entities:
+
 - `chats` - Chat sessions with user association
 - Messages are handled in-memory during conversations
 
@@ -69,11 +74,13 @@ Uses Drizzle ORM with these main entities:
 The `/api/ymax` endpoint provides AI-powered portfolio analysis for DeFi yield optimization:
 
 **Supported Protocols:**
+
 - **Aave**: Optimism, Arbitrum, Ethereum chains
-- **Compound**: Ethereum, Arbitrum, Polygon chains  
+- **Compound**: Ethereum, Arbitrum, Polygon chains
 - **USDN**: Noble chain (Cosmos ecosystem)
 
 **Key Features:**
+
 - Multi-chain yield opportunity analysis
 - Real-time APY and TVL data integration
 - Historical trend analysis for market timing
@@ -81,6 +88,7 @@ The `/api/ymax` endpoint provides AI-powered portfolio analysis for DeFi yield o
 - CORS-enabled for external application access
 
 **Data Sources:**
+
 - Agoric APY Worker: `https://apy-worker.agoric-core.workers.dev`
 - Noble USDN: `https://worker.dollar.noble.xyz/`
 
@@ -95,7 +103,7 @@ The `/api/ymax` endpoint provides AI-powered portfolio analysis for DeFi yield o
 ## Development Notes
 
 - Uses yarn as package manager
-- TypeScript throughout with strict configuration  
+- TypeScript throughout with strict configuration
 - Component library based on shadcn/ui
 - Database migrations managed through Drizzle Kit
 - Deployment optimized for Cloudflare Workers via OpenNext
