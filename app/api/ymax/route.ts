@@ -367,7 +367,7 @@ export async function POST(req: Request) {
 
   2. **Technical issues** (tool errors, data inconsistencies, tracking problems):
      - **Discord**: https://agoric.com/discord (for real-time troubleshooting)
-     - **Ymax app feedback form**: https://ymax.app (bottom right corner) - Select "Technical Issue" category
+     - **Ymax app feedback form**: https://ymax.app (bottom right corner) - Select "Bug Report" category
      - Provide: Error message, tool name that failed, steps to reproduce
 
   3. **Product feedback** (feature requests, UX suggestions, general questions):
