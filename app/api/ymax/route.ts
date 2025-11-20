@@ -450,20 +450,8 @@ export async function POST(req: Request) {
         },
       },
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       console.error('[Stream Error]', JSON.stringify(error, null, 2));
-
-      // Check if error is context-related
-      if (
-        error.message?.includes('context') ||
-        error.message?.includes('token') ||
-        error.message?.includes('length')
-      ) {
-        console.error(
-          '🚨 [Context Overflow] Error likely caused by context limit during streaming. ' +
-            'Tool results may have been too large despite truncation.',
-        );
-      }
     },
     async onFinish({ usage, finishReason }: any) {
       // Log streaming completion stats
@@ -474,17 +462,15 @@ export async function POST(req: Request) {
         totalTokens: usage?.totalTokens,
       });
 
-      // Warn if we hit token limits
       if (finishReason === 'length' || finishReason === 'max-tokens') {
         console.warn(
-          '⚠️ [Stream] Response truncated due to token limit. Consider reducing maxTokens or tool result sizes.',
+          '[Stream] Response truncated due to token limit. Consider reducing maxTokens or tool result sizes.',
         );
       }
 
-      // Monitor total token usage
       if (usage?.totalTokens && usage.totalTokens > 80_000) {
         console.warn(
-          `⚠️ [High Token Usage] ${usage.totalTokens.toLocaleString()} tokens used. ` +
+          `[High Token Usage] ${usage.totalTokens.toLocaleString()} tokens used. ` +
             `Close to context limits.`,
         );
       }
