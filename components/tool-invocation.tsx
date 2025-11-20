@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -11,8 +11,8 @@ import {
   Code,
   ArrowRight,
   Circle,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ToolInvocationProps {
   toolName: string;
@@ -39,7 +39,7 @@ export function ToolInvocation({
       opacity: 0,
     },
     expanded: {
-      height: "auto",
+      height: 'auto',
       opacity: 1,
     },
   };
@@ -47,16 +47,16 @@ export function ToolInvocation({
   // Convert tool names to "Title Case"
   const formatToolName = (name: string): string => {
     return name
-      .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
-      .replaceAll(/[_-]/g, " ")
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
+      .replaceAll(/([a-z])([A-Z])/g, '$1 $2')
+      .replaceAll(/[_-]/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
   };
 
   const getStatusIcon = () => {
-    if (state === "call") {
-      if (isLatestMessage && status !== "ready") {
+    if (state === 'call') {
+      if (isLatestMessage && status !== 'ready') {
         return <Loader2 className="animate-spin h-3.5 w-3.5 text-primary/70" />;
       }
       return (
@@ -67,18 +67,18 @@ export function ToolInvocation({
   };
 
   const getStatusClass = () => {
-    if (state === "call") {
-      if (isLatestMessage && status !== "ready") {
-        return "text-primary";
+    if (state === 'call') {
+      if (isLatestMessage && status !== 'ready') {
+        return 'text-primary';
       }
-      return "text-muted-foreground";
+      return 'text-muted-foreground';
     }
-    return "text-primary";
+    return 'text-primary';
   };
 
   const formatContent = (content: any): string => {
     try {
-      if (typeof content === "string") {
+      if (typeof content === 'string') {
         try {
           const parsed = JSON.parse(content);
           return JSON.stringify(parsed, null, 2);
@@ -93,15 +93,17 @@ export function ToolInvocation({
   };
 
   return (
-    <div className={cn(
-      "flex flex-col mb-2 rounded-md border border-border/50 overflow-hidden",
-      "bg-gradient-to-b from-background to-muted/30 backdrop-blur-sm",
-      "transition-all duration-200 hover:border-border/80 group"
-    )}>
+    <div
+      className={cn(
+        'flex flex-col mb-2 rounded-md border border-border/50 overflow-hidden',
+        'bg-gradient-to-b from-background to-muted/30 backdrop-blur-sm',
+        'transition-all duration-200 hover:border-border/80 group',
+      )}
+    >
       <div
         className={cn(
-          "flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors",
-          "hover:bg-muted/20",
+          'flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors',
+          'hover:bg-muted/20',
         )}
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -115,19 +117,19 @@ export function ToolInvocation({
             </span>
             <span
               className={cn(
-                "text-xs font-medium px-1.5 py-0.5 rounded-md",
-                state === "call"
-                  ? isLatestMessage && status !== "ready"
-                    ? "bg-primary/10 text-primary"
-                    : "bg-muted text-muted-foreground"
-                  : "bg-primary/10 text-primary",
+                'text-xs font-medium px-1.5 py-0.5 rounded-md',
+                state === 'call'
+                  ? isLatestMessage && status !== 'ready'
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted text-muted-foreground'
+                  : 'bg-primary/10 text-primary',
               )}
             >
-              {state === "call"
-                ? isLatestMessage && status !== "ready"
-                  ? "Running"
-                  : "Waiting"
-                : "Completed"}
+              {state === 'call'
+                ? isLatestMessage && status !== 'ready'
+                  ? 'Running'
+                  : 'Waiting'
+                : 'Completed'}
             </span>
           </div>
           <span className="text-xs text-muted-foreground/60 font-mono">
@@ -162,25 +164,29 @@ export function ToolInvocation({
                   <Code className="h-3 w-3" />
                   <span className="font-medium">Arguments</span>
                 </div>
-                <pre className={cn(
-                  "text-xs font-mono p-2.5 rounded-md overflow-x-auto",
-                  "border border-border/40 bg-muted/10"
-                )}>
+                <pre
+                  className={cn(
+                    'text-xs font-mono p-2.5 rounded-md overflow-x-auto',
+                    'border border-border/40 bg-muted/10',
+                  )}
+                >
                   {formatContent(args)}
                 </pre>
               </div>
             )}
-            
+
             {!!result && (
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
                   <ArrowRight className="h-3 w-3" />
                   <span className="font-medium">Result</span>
                 </div>
-                <pre className={cn(
-                  "text-xs font-mono p-2.5 rounded-md overflow-x-auto max-h-[300px] overflow-y-auto",
-                  "border border-border/40 bg-muted/10"
-                )}>
+                <pre
+                  className={cn(
+                    'text-xs font-mono p-2.5 rounded-md overflow-x-auto max-h-[300px] overflow-y-auto',
+                    'border border-border/40 bg-muted/10',
+                  )}
+                >
                   {formatContent(result)}
                 </pre>
               </div>
@@ -190,4 +196,4 @@ export function ToolInvocation({
       </AnimatePresence>
     </div>
   );
-} 
+}

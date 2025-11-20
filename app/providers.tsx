@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { ReactNode, useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { ThemeProvider } from "@/components/theme-provider";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { Toaster } from "sonner";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useLocalStorage } from "@/lib/hooks/use-local-storage";
-import { STORAGE_KEYS } from "@/lib/constants";
-import { MCPProvider } from "@/lib/context/mcp-context";
-import { SplashScreen } from "@/components/splash-screen";
+import { ReactNode, useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { ThemeProvider } from '@/components/theme-provider';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { Toaster } from 'sonner';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useLocalStorage } from '@/lib/hooks/use-local-storage';
+import { STORAGE_KEYS } from '@/lib/constants';
+import { MCPProvider } from '@/lib/context/mcp-context';
+import { SplashScreen } from '@/components/splash-screen';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -24,17 +24,28 @@ const queryClient = new QueryClient({
 function ThemeWrapper({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>(
     STORAGE_KEYS.SIDEBAR_STATE,
-    false
+    false,
   );
-  
+
   const searchParams = useSearchParams();
-  const themeParam = decodeURIComponent(searchParams.get("theme") || '');
-  
+  const themeParam = decodeURIComponent(searchParams.get('theme') || '');
+
   // Available themes
-  const availableThemes = ["light", "dark", "sunset", "black", "dark-blue", "agoric-theme", "ymax"];
-  
+  const availableThemes = [
+    'light',
+    'dark',
+    'sunset',
+    'black',
+    'dark-blue',
+    'agoric-theme',
+    'ymax',
+  ];
+
   // Use theme from query param if valid, otherwise default to dark-blue
-  const defaultTheme = themeParam && availableThemes.includes(themeParam) ? themeParam : "dark-blue";
+  const defaultTheme =
+    themeParam && availableThemes.includes(themeParam)
+      ? themeParam
+      : 'dark-blue';
 
   return (
     <ThemeProvider
@@ -43,10 +54,18 @@ function ThemeWrapper({ children }: { children: ReactNode }) {
       enableSystem={true}
       disableTransitionOnChange
       themes={availableThemes}
-      forcedTheme={themeParam && availableThemes.includes(themeParam) ? themeParam : undefined}
+      forcedTheme={
+        themeParam && availableThemes.includes(themeParam)
+          ? themeParam
+          : undefined
+      }
     >
       <MCPProvider>
-        <SidebarProvider defaultOpen={sidebarOpen} open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SidebarProvider
+          defaultOpen={sidebarOpen}
+          open={sidebarOpen}
+          onOpenChange={setSidebarOpen}
+        >
           {children}
           <Toaster position="top-center" richColors />
         </SidebarProvider>
@@ -63,4 +82,4 @@ export function Providers({ children }: { children: ReactNode }) {
       </Suspense>
     </QueryClientProvider>
   );
-} 
+}

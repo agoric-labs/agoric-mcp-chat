@@ -6,25 +6,25 @@
   "compatibility_flags": ["nodejs_compat", "enable_nodejs_fs_module"],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
   },
   "services": [
     {
       "binding": "MCP",
       "service": "agoric-mcp-server",
-    }
+    },
   ],
   "observability": {
     "logs": {
       "enabled": true,
       "head_sampling_rate": 1,
       "invocation_logs": true,
-      "persist": true
+      "persist": true,
     },
     "traces": {
       "enabled": false,
       "persist": true,
-      "head_sampling_rate": 1
-    }
-  }
+      "head_sampling_rate": 1,
+    },
+  },
 }

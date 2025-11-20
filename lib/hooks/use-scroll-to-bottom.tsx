@@ -22,16 +22,16 @@ export function useScrollToBottom(): [
     // Track if user has manually scrolled up
     const handleScroll = () => {
       if (!container) return;
-      
+
       const { scrollTop, scrollHeight, clientHeight } = container;
       const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-      
+
       // If user is scrolled up, mark as manually scrolling
       isUserScrollingRef.current = distanceFromBottom > 100;
     };
 
     // Handle mutations
-    const observer = new MutationObserver((mutations) => {
+    const observer = new MutationObserver(mutations => {
       if (!container || !end) return;
 
       // Check if mutation is related to expand/collapse
@@ -39,7 +39,7 @@ export function useScrollToBottom(): [
         // Check if the target or parent is a motion-div (expanded content)
         let target = mutation.target as HTMLElement;
         let isExpand = false;
-        
+
         while (target && target !== container) {
           if (target.classList?.contains('motion-div')) {
             isExpand = true;
@@ -74,5 +74,8 @@ export function useScrollToBottom(): [
     };
   }, []);
 
-  return [containerRef, endRef] as [RefObject<HTMLDivElement>, RefObject<HTMLDivElement>];
+  return [containerRef, endRef] as [
+    RefObject<HTMLDivElement>,
+    RefObject<HTMLDivElement>,
+  ];
 }

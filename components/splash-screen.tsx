@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 interface SplashScreenProps {
   showTimer?: boolean;
@@ -11,7 +11,7 @@ export function SplashScreen({ showTimer = true }: SplashScreenProps) {
 
   useEffect(() => {
     if (!showTimer) return;
-    
+
     const timer = setTimeout(() => {
       setIsVisible(false);
     }, 1500);

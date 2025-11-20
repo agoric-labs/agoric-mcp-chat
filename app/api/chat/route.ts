@@ -1,14 +1,22 @@
-import { model, type modelID } from "@/ai/providers";
-import { streamText, type UIMessage, convertToModelMessages, stepCountIs } from "ai";
+import { model, type modelID } from '@/ai/providers';
+import {
+  streamText,
+  type UIMessage,
+  convertToModelMessages,
+  stepCountIs,
+} from 'ai';
 import { nanoid } from 'nanoid';
 import { db } from '@/lib/db';
 import { chats } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
-import { experimental_createMCPClient as createMCPClient, type MCPTransport } from '@ai-sdk/mcp';
+import {
+  experimental_createMCPClient as createMCPClient,
+  type MCPTransport,
+} from '@ai-sdk/mcp';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { spawn } from "child_process";
-import { agoricMcpToolSchemas } from "@/lib/mcp/agoric-tool-schemas";
+import { spawn } from 'child_process';
+import { agoricMcpToolSchemas } from '@/lib/mcp/agoric-tool-schemas';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -48,10 +56,10 @@ export async function POST(req: Request) {
   } = await req.json();
 
   if (!userId) {
-    return new Response(
-      JSON.stringify({ error: "User ID is required" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: 'User ID is required' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const id = chatId || nanoid();
@@ -62,14 +70,11 @@ export async function POST(req: Request) {
   if (chatId) {
     try {
       const existingChat = await db.query.chats.findFirst({
-        where: and(
-          eq(chats.id, chatId),
-          eq(chats.userId, userId)
-        )
+        where: and(eq(chats.id, chatId), eq(chats.userId, userId)),
       });
       isNewChat = !existingChat;
     } catch (error) {
-      console.error("Error checking for existing chat:", error);
+      console.error('Error checking for existing chat:', error);
       // Continue anyway, we'll create the chat in onFinish
       isNewChat = true;
     }
@@ -86,7 +91,9 @@ export async function POST(req: Request) {
   for (const mcpServer of mcpServers) {
     try {
       // Create appropriate transport based on type
-      let transport: MCPTransport | { type: 'sse', url: string, headers?: Record<string, string> };
+      let transport:
+        | MCPTransport
+        | { type: 'sse'; url: string; headers?: Record<string, string> };
 
       if (mcpServer.type === 'sse') {
         console.log('Using SSE transport type');
@@ -96,13 +103,15 @@ export async function POST(req: Request) {
         transport = {
           type: 'sse' as const,
           url: mcpServer.url,
-          headers: Object.keys(headers).length > 0 ? headers : undefined
+          headers: Object.keys(headers).length > 0 ? headers : undefined,
         };
 
         console.log('Transport configuration:', {
           type: transport.type,
           url: transport.url,
-          headersPresent: transport.headers ? Object.keys(transport.headers).join(', ') : 'none'
+          headersPresent: transport.headers
+            ? Object.keys(transport.headers).join(', ')
+            : 'none',
         });
 
         // Validate URL
@@ -117,19 +126,32 @@ export async function POST(req: Request) {
         console.log('Making test request to URL:', mcpServer.url);
         fetch(mcpServer.url, {
           method: 'HEAD',
-          headers: transport.headers
+          headers: transport.headers,
         })
           .then(response => {
-            console.log('Test request response status:', response.status, response.statusText);
-            console.log('Test request response headers:', Object.fromEntries(response.headers.entries()));
+            console.log(
+              'Test request response status:',
+              response.status,
+              response.statusText,
+            );
+            console.log(
+              'Test request response headers:',
+              Object.fromEntries(response.headers.entries()),
+            );
           })
           .catch(error => {
             console.error('Test request failed:', error);
           });
       } else if (mcpServer.type === 'stdio') {
         // For stdio transport, we need command and args
-        if (!mcpServer.command || !mcpServer.args || mcpServer.args.length === 0) {
-          console.warn("Skipping stdio MCP server due to missing command or args");
+        if (
+          !mcpServer.command ||
+          !mcpServer.args ||
+          mcpServer.args.length === 0
+        ) {
+          console.warn(
+            'Skipping stdio MCP server due to missing command or args',
+          );
           continue;
         }
 
@@ -151,21 +173,29 @@ export async function POST(req: Request) {
             }
           });
           // wait for the subprocess to finish
-          await new Promise((resolve) => {
+          await new Promise(resolve => {
             subprocess.on('close', resolve);
-            console.log("installed uv");
+            console.log('installed uv');
           });
-          console.log("Detected uvx pattern, transforming to python3 -m uv run");
+          console.log(
+            'Detected uvx pattern, transforming to python3 -m uv run',
+          );
           mcpServer.command = 'python3';
           // Get the tool name (first argument)
           const toolName = mcpServer.args[0];
           // Replace args with the new pattern
-          mcpServer.args = ['-m', 'uv', 'run', toolName, ...mcpServer.args.slice(1)];
+          mcpServer.args = [
+            '-m',
+            'uv',
+            'run',
+            toolName,
+            ...mcpServer.args.slice(1),
+          ];
         }
         // if python is passed in the command, install the python package mentioned in args after -m with subprocess or use regex to find the package name
         else if (mcpServer.command.includes('python3')) {
           const packageName = mcpServer.args[mcpServer.args.indexOf('-m') + 1];
-          console.log("installing python package", packageName);
+          console.log('installing python package', packageName);
           const subprocess = spawn('pip3', ['install', packageName]);
           subprocess.on('close', (code: number) => {
             if (code !== 0) {
@@ -173,19 +203,21 @@ export async function POST(req: Request) {
             }
           });
           // wait for the subprocess to finish
-          await new Promise((resolve) => {
+          await new Promise(resolve => {
             subprocess.on('close', resolve);
-            console.log("installed python package", packageName);
+            console.log('installed python package', packageName);
           });
         }
 
         transport = new StdioClientTransport({
           command: mcpServer.command,
           args: mcpServer.args,
-          env: Object.keys(env).length > 0 ? env : undefined
+          env: Object.keys(env).length > 0 ? env : undefined,
         });
       } else {
-        console.warn(`Skipping MCP server with unsupported transport type: ${mcpServer.type}`);
+        console.warn(
+          `Skipping MCP server with unsupported transport type: ${mcpServer.type}`,
+        );
         continue;
       }
 
@@ -196,12 +228,15 @@ export async function POST(req: Request) {
         schemas: agoricMcpToolSchemas,
       });
 
-      console.log(`MCP tools from ${mcpServer.type} transport:`, Object.keys(mcptools));
+      console.log(
+        `MCP tools from ${mcpServer.type} transport:`,
+        Object.keys(mcptools),
+      );
 
       // Add MCP tools to tools object
       tools = { ...tools, ...mcptools };
     } catch (error) {
-      console.error("Failed to initialize MCP client:", error);
+      console.error('Failed to initialize MCP client:', error);
       console.error('MCP Server config:', mcpServer);
       // Continue with other servers instead of failing the entire request
     }
@@ -214,14 +249,17 @@ export async function POST(req: Request) {
         try {
           await client.close();
         } catch (error) {
-          console.error("Error closing MCP client:", error);
+          console.error('Error closing MCP client:', error);
         }
       }
     });
   }
 
-  console.log("messages", messages);
-  console.log("parts", messages.map(m => m.parts.map(p => p)));
+  console.log('messages', messages);
+  console.log(
+    'parts',
+    messages.map(m => m.parts.map(p => p)),
+  );
 
   // Build dynamic system prompt based on ino parameter
   let systemPrompt;
@@ -375,11 +413,11 @@ export async function POST(req: Request) {
       anthropic: {
         thinking: {
           type: 'enabled',
-          budgetTokens: 12000
+          budgetTokens: 12000,
         },
-      }
+      },
     },
-    onError: (error) => {
+    onError: error => {
       console.error(JSON.stringify(error, null, 2));
     },
     async onFinish({ response }) {
@@ -389,21 +427,20 @@ export async function POST(req: Request) {
       //   userId,
       //   messages: response.messages,
       // });
-
       // const dbMessages = convertToDBMessages(response.messages, id);
       // await saveMessages({ messages: dbMessages });
       // close all mcp clients
       // for (const client of mcpClients) {
       //   await client.close();
       // }
-    }
+    },
   });
 
   return result.toUIMessageStreamResponse({
     originalMessages: messages,
     sendReasoning: true, // Enable streaming of reasoning/thinking content
     headers: {
-      "Content-Type": "text/event-stream",
+      'Content-Type': 'text/event-stream',
     },
   });
 }

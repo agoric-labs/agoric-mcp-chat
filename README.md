@@ -38,12 +38,14 @@ This application supports connecting to Model Context Protocol (MCP) servers to 
 #### SSE Configuration
 
 If you select SSE transport:
+
 1. Enter the server URL (e.g., `https://mcp.example.com/token/sse`)
 2. Click "Add Server"
 
 #### stdio Configuration
 
 If you select stdio transport:
+
 1. Enter the command to execute (e.g., `npx`)
 2. Enter the command arguments (e.g., `-y @modelcontextprotocol/server-google-maps`)
    - You can enter space-separated arguments or paste a JSON array
