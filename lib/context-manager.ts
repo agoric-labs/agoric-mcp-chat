@@ -1,8 +1,8 @@
-import { generateText, type CoreMessage } from 'ai';
+import { generateText, type ModelMessage } from 'ai';
 import { getApiKey, model } from '@/ai/providers';
 import Anthropic from '@anthropic-ai/sdk';
 
-export function estimateTokens(content: string | CoreMessage[]): number {
+export function estimateTokens(content: string | ModelMessage[]): number {
   if (typeof content === 'string') return Math.ceil(content.length / 3.5);
 
   let totalChars = 0;
@@ -40,7 +40,7 @@ export const DEFAULT_CONTEXT_CONFIG: Required<
 };
 
 export interface ContextManagerResult {
-  messages: CoreMessage[];
+  messages: ModelMessage[];
   wasSummarized: boolean;
   originalTokens: number;
   newTokens: number;
@@ -63,7 +63,7 @@ export interface ContextEditingOptions {
   debug?: boolean;
 }
 
-function formatMessageForSummary(msg: CoreMessage): string {
+function formatMessageForSummary(msg: ModelMessage): string {
   const content =
     typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
   return `${msg.role.toUpperCase()}: ${content.slice(0, 300)}`;
@@ -73,49 +73,72 @@ function formatMessageForSummary(msg: CoreMessage): string {
 const genId = () => `toolu_${Math.random().toString(36).slice(2, 16)}`;
 
 // Convert Vercel AI messages -> Anthropic message format
-function convertToAnthropicFormat(messages: CoreMessage[]): any[] {
+function convertToAnthropicFormat(messages: ModelMessage[]): any[] {
   const anthropicMessages: any[] = [];
 
   for (const msg of messages.filter((m: any) => m.role !== 'system')) {
-    const contentText =
-      typeof msg.content === 'string'
-        ? msg.content
-        : JSON.stringify(msg.content);
+    if (msg.role === 'assistant') {
+      const content = Array.isArray(msg.content) ? msg.content : [{ type: 'text', text: msg.content }];
 
-    if (msg.role === 'assistant' && (msg as any).toolInvocations?.length) {
-      const toolUseBlocks = (msg as any).toolInvocations.map((inv: any) => ({
-        type: 'tool_use',
-        id: inv.toolCallId ?? genId(),
-        name: inv.toolName,
-        input: inv.args ?? {},
-      }));
+      const textParts = content.filter((p: any) => p.type === 'text');
+      const toolCalls = content.filter((p: any) => p.type === 'tool-call');
+      const toolResults = content.filter((p: any) => p.type === 'tool-result');
 
-      anthropicMessages.push({
-        role: 'assistant',
-        content: [{ type: 'text', text: contentText }, ...toolUseBlocks],
-      });
+      if (toolCalls.length) {
+        // Build anthropic assistant message with text and tool_use blocks
+        const anthropicContent: any[] = [];
 
-      const toolResultBlocks = (msg as any).toolInvocations
-        .filter((inv: any) => inv.result !== undefined)
-        .map((inv: any) => ({
-          type: 'tool_result',
-          tool_use_id: inv.toolCallId ?? genId(),
-          content:
-            typeof inv.result === 'string'
-              ? inv.result
-              : JSON.stringify(inv.result),
-        }));
+        // Add text parts
+        const text = textParts.map((p: any) => p.text).join('');
+        if (text) {
+          anthropicContent.push({ type: 'text', text });
+        }
 
-      if (toolResultBlocks.length) {
+        // Add tool_use blocks
+        for (const toolCall of toolCalls) {
+          const tc = toolCall as any;
+          anthropicContent.push({
+            type: 'tool_use',
+            id: tc.toolCallId ?? genId(),
+            name: tc.toolName,
+            input: tc.args ?? {},
+          });
+        }
+
         anthropicMessages.push({
-          role: 'user',
-          content: toolResultBlocks,
+          role: 'assistant',
+          content: anthropicContent,
+        });
+
+        // If there are tool results, add them as a separate user message
+        if (toolResults.length) {
+          anthropicMessages.push({
+            role: 'user',
+            content: toolResults.map((result: any) => ({
+              type: 'tool_result',
+              tool_use_id: result.toolCallId,
+              content: typeof result.result === 'string' ? result.result : JSON.stringify(result.result),
+            })),
+          });
+        }
+      } else {
+        // Simple text message
+        const text = typeof msg.content === 'string'
+          ? msg.content
+          : textParts.map((p: any) => p.text).join('');
+        anthropicMessages.push({
+          role: 'assistant',
+          content: [{ type: 'text', text }],
         });
       }
     } else {
+      // User message
+      const text = typeof msg.content === 'string'
+        ? msg.content
+        : JSON.stringify(msg.content);
       anthropicMessages.push({
         role: msg.role,
-        content: [{ type: 'text', text: contentText }],
+        content: [{ type: 'text', text }],
       });
     }
   }
@@ -124,57 +147,72 @@ function convertToAnthropicFormat(messages: CoreMessage[]): any[] {
 }
 
 // Convert Anthropic messages -> Vercel AI message format
-function convertFromAnthropicFormat(anthropicMessages: any[]): CoreMessage[] {
-  const converted: CoreMessage[] = [];
-  let pendingToolUses: any[] = [];
+function convertFromAnthropicFormat(anthropicMessages: any[]): ModelMessage[] {
+  const converted: ModelMessage[] = [];
 
-  for (const msg of anthropicMessages) {
+  for (let i = 0; i < anthropicMessages.length; i++) {
+    const msg = anthropicMessages[i];
     const parts = Array.isArray(msg.content)
       ? msg.content
       : [{ type: 'text', text: msg.content }];
 
     if (msg.role === 'assistant') {
-      const text = parts.find((p: any) => p.type === 'text')?.text ?? '';
+      const textParts = parts.filter((p: any) => p.type === 'text');
       const toolUses = parts.filter((p: any) => p.type === 'tool_use');
 
       if (toolUses.length) {
-        pendingToolUses = toolUses.map((tool: any) => ({
-          toolCallId: tool.id,
-          toolName: tool.name,
-          args: tool.input,
-          result: undefined,
-        }));
+        // Build content array with text and tool calls
+        const contentParts: any[] = [];
+
+        // Add text if present
+        const text = textParts.map((p: any) => p.text).join('');
+        if (text) {
+          contentParts.push({ type: 'text', text });
+        }
+
+        // Add tool calls
+        for (const tool of toolUses) {
+          contentParts.push({
+            type: 'tool-call',
+            toolCallId: tool.id,
+            toolName: tool.name,
+            args: tool.input,
+          });
+        }
+
+        // Check if next message has tool results
+        const nextMsg = anthropicMessages[i + 1];
+        if (nextMsg?.role === 'user') {
+          const nextParts = Array.isArray(nextMsg.content)
+            ? nextMsg.content
+            : [{ type: 'text', text: nextMsg.content }];
+          const toolResults = nextParts.filter((p: any) => p.type === 'tool_result');
+
+          if (toolResults.length) {
+            // Add tool results to content
+            for (const result of toolResults) {
+              contentParts.push({
+                type: 'tool-result',
+                toolCallId: result.tool_use_id,
+                toolName: toolUses.find((t: any) => t.id === result.tool_use_id)?.name ?? 'unknown',
+                result: typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
+              });
+            }
+            i++; // Skip the next user message since we consumed it
+          }
+        }
 
         converted.push({
           role: 'assistant',
-          content: text,
-          toolInvocations: [...pendingToolUses],
+          content: contentParts.length === 1 && contentParts[0].type === 'text'
+            ? contentParts[0].text
+            : contentParts,
         });
       } else {
+        const text = textParts.map((p: any) => p.text).join('');
         converted.push({ role: 'assistant', content: text });
       }
       continue;
-    }
-
-    if (msg.role === 'user' && pendingToolUses.length) {
-      const toolResults = parts.filter((p: any) => p.type === 'tool_result');
-
-      if (toolResults.length) {
-        for (const pending of pendingToolUses) {
-          const match = toolResults.find(
-            (r: any) => r.tool_use_id === pending.toolCallId,
-          );
-          if (match) pending.result = match.content;
-        }
-
-        const last = converted[converted.length - 1];
-        if (last?.toolInvocations) {
-          last.toolInvocations = [...pendingToolUses];
-        }
-
-        pendingToolUses = [];
-        continue;
-      }
     }
 
     if (msg.role === 'user') {
@@ -192,14 +230,14 @@ function convertFromAnthropicFormat(anthropicMessages: any[]): CoreMessage[] {
 }
 
 async function summarizeWithDirectAPI(
-  messages: CoreMessage[],
+  messages: ModelMessage[],
 ): Promise<string> {
   const conversation = messages.map(formatMessageForSummary).join('\n');
 
   const result = await generateText({
     model: model.languageModel('claude-4-5-sonnet'),
     temperature: 0.3,
-    maxTokens: 2000,
+    maxOutputTokens: 2000,
     system: `You are summarizing a conversation about DeFi portfolio optimization and Agoric blockchain operations.
 
 Create a structured, information-dense summary that preserves critical context for continuing the conversation:
@@ -241,9 +279,9 @@ Focus on facts, numbers, and actionable information. Omit pleasantries, acknowle
 }
 
 export async function summarizeWithContextEditing(
-  messages: CoreMessage[],
+  messages: ModelMessage[],
   options: ContextEditingOptions = {},
-): Promise<{ messages: CoreMessage[]; tokensSaved: number }> {
+): Promise<{ messages: ModelMessage[]; tokensSaved: number }> {
   const clearThinking = {
     enabled: options.clearThinking?.enabled ?? true,
     keepThinkingTurns: options.clearThinking?.keepThinkingTurns ?? 2,
@@ -337,15 +375,15 @@ export async function summarizeWithContextEditing(
 
     // Convert back to Vercel AI SDK format
     const convertedMessages = convertFromAnthropicFormat(editedMessages);
-    const coreMessages: CoreMessage[] = systemMessage
+    const modelMessages: ModelMessage[] = systemMessage
       ? [systemMessage, ...convertedMessages]
       : convertedMessages;
 
     const originalTokens = estimateTokens(messages);
-    const newTokens = estimateTokens(coreMessages);
+    const newTokens = estimateTokens(modelMessages);
 
     return {
-      messages: coreMessages,
+      messages: modelMessages,
       tokensSaved: originalTokens - newTokens,
     };
   } catch (err) {
@@ -364,7 +402,7 @@ export async function summarizeWithContextEditing(
     }
 
     const summaryText = await summarizeWithDirectAPI(oldMessages);
-    const summaryMessage: CoreMessage = {
+    const summaryMessage: ModelMessage = {
       role: 'system',
       content: summaryText,
     };
@@ -378,7 +416,7 @@ export async function summarizeWithContextEditing(
 }
 
 export async function manageContext(
-  messages: CoreMessage[],
+  messages: ModelMessage[],
   config: ContextManagerConfig = {},
 ): Promise<ContextManagerResult> {
   if (messages.length === 0) {
@@ -460,7 +498,7 @@ export async function manageContext(
   console.log(`Summarizing ${oldMessages.length} old messages...`);
   const summaryText = await summarizeWithDirectAPI(oldMessages);
 
-  const summaryMessage: CoreMessage = { role: 'system', content: summaryText };
+  const summaryMessage: ModelMessage = { role: 'system', content: summaryText };
   const newMessages = [summaryMessage, ...recentMessages];
   const newTokens = estimateTokens(newMessages);
   const tokensSaved = originalTokens - newTokens;
