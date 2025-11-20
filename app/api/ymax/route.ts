@@ -384,30 +384,11 @@ export async function POST(req: Request) {
 
   const coreMessages = convertToModelMessages(messages);
 
-  // Leaving ~30k token safety margin for:
-  // - Model response generation (up to 4k tokens)
-  // - Tool calls and results (can be 5-10k+ tokens per turn)
-  // - Thinking tokens (up to 12k configured for Anthropic)
-  // - Buffer for context rot (diminishing returns as context grows)
   const contextResult = await manageContext(coreMessages, {
-    maxTokens: 70_000, // More conservative - Anthropic recommends tight context
+    maxTokens: 70_000,
     keepRecentMessages: 8,
-    useContextEditing: true,
     debug: false,
     systemPrompt: finalSystemPrompt,
-    contextEditConfig: {
-      clearThinking: {
-        enabled: true,
-        keepThinkingTurns: 1,
-      },
-      clearToolUses: {
-        enabled: true,
-        triggerInputTokens: 15_000,
-        keepToolUses: 1,
-        clearAtLeastTokens: 15_000,
-        excludeTools: [],
-      },
-    },
   });
 
   if (contextResult.wasSummarized) {

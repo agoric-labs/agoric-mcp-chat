@@ -1,6 +1,5 @@
 import { generateText, type ModelMessage } from 'ai';
-import { getApiKey, model } from '@/ai/providers';
-import Anthropic from '@anthropic-ai/sdk';
+import { model } from '@/ai/providers';
 
 export function estimateTokens(content: string | ModelMessage[]): number {
   if (typeof content === 'string') return Math.ceil(content.length / 3.5);
@@ -24,18 +23,15 @@ export function estimateTokens(content: string | ModelMessage[]): number {
 export interface ContextManagerConfig {
   maxTokens?: number;
   keepRecentMessages?: number;
-  useContextEditing?: boolean;
   debug?: boolean;
-  contextEditConfig?: ContextEditingOptions;
   systemPrompt?: string;
 }
 
 export const DEFAULT_CONTEXT_CONFIG: Required<
   Omit<ContextManagerConfig, 'contextEditConfig' | 'systemPrompt'>
 > = {
-  maxTokens: 100_000,
-  keepRecentMessages: 8,
-  useContextEditing: true,
+  maxTokens: 100_000, // Maximum tokens before triggering summarization
+  keepRecentMessages: 10,
   debug: false,
 };
 
@@ -67,166 +63,6 @@ function formatMessageForSummary(msg: ModelMessage): string {
   const content =
     typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
   return `${msg.role.toUpperCase()}: ${content.slice(0, 300)}`;
-}
-
-// Helper to generate deterministic fallback IDs
-const genId = () => `toolu_${Math.random().toString(36).slice(2, 16)}`;
-
-// Convert Vercel AI messages -> Anthropic message format
-function convertToAnthropicFormat(messages: ModelMessage[]): any[] {
-  const anthropicMessages: any[] = [];
-
-  for (const msg of messages.filter((m: any) => m.role !== 'system')) {
-    if (msg.role === 'assistant') {
-      const content = Array.isArray(msg.content) ? msg.content : [{ type: 'text', text: msg.content }];
-
-      const textParts = content.filter((p: any) => p.type === 'text');
-      const toolCalls = content.filter((p: any) => p.type === 'tool-call');
-      const toolResults = content.filter((p: any) => p.type === 'tool-result');
-
-      if (toolCalls.length) {
-        // Build anthropic assistant message with text and tool_use blocks
-        const anthropicContent: any[] = [];
-
-        // Add text parts
-        const text = textParts.map((p: any) => p.text).join('');
-        if (text) {
-          anthropicContent.push({ type: 'text', text });
-        }
-
-        // Add tool_use blocks
-        for (const toolCall of toolCalls) {
-          const tc = toolCall as any;
-          anthropicContent.push({
-            type: 'tool_use',
-            id: tc.toolCallId ?? genId(),
-            name: tc.toolName,
-            input: tc.args ?? {},
-          });
-        }
-
-        anthropicMessages.push({
-          role: 'assistant',
-          content: anthropicContent,
-        });
-
-        // If there are tool results, add them as a separate user message
-        if (toolResults.length) {
-          anthropicMessages.push({
-            role: 'user',
-            content: toolResults.map((result: any) => ({
-              type: 'tool_result',
-              tool_use_id: result.toolCallId,
-              content: typeof result.result === 'string' ? result.result : JSON.stringify(result.result),
-            })),
-          });
-        }
-      } else {
-        // Simple text message
-        const text = typeof msg.content === 'string'
-          ? msg.content
-          : textParts.map((p: any) => p.text).join('');
-        anthropicMessages.push({
-          role: 'assistant',
-          content: [{ type: 'text', text }],
-        });
-      }
-    } else {
-      // User message
-      const text = typeof msg.content === 'string'
-        ? msg.content
-        : JSON.stringify(msg.content);
-      anthropicMessages.push({
-        role: msg.role,
-        content: [{ type: 'text', text }],
-      });
-    }
-  }
-
-  return anthropicMessages;
-}
-
-// Convert Anthropic messages -> Vercel AI message format
-function convertFromAnthropicFormat(anthropicMessages: any[]): ModelMessage[] {
-  const converted: ModelMessage[] = [];
-
-  for (let i = 0; i < anthropicMessages.length; i++) {
-    const msg = anthropicMessages[i];
-    const parts = Array.isArray(msg.content)
-      ? msg.content
-      : [{ type: 'text', text: msg.content }];
-
-    if (msg.role === 'assistant') {
-      const textParts = parts.filter((p: any) => p.type === 'text');
-      const toolUses = parts.filter((p: any) => p.type === 'tool_use');
-
-      if (toolUses.length) {
-        // Build content array with text and tool calls
-        const contentParts: any[] = [];
-
-        // Add text if present
-        const text = textParts.map((p: any) => p.text).join('');
-        if (text) {
-          contentParts.push({ type: 'text', text });
-        }
-
-        // Add tool calls
-        for (const tool of toolUses) {
-          contentParts.push({
-            type: 'tool-call',
-            toolCallId: tool.id,
-            toolName: tool.name,
-            args: tool.input,
-          });
-        }
-
-        // Check if next message has tool results
-        const nextMsg = anthropicMessages[i + 1];
-        if (nextMsg?.role === 'user') {
-          const nextParts = Array.isArray(nextMsg.content)
-            ? nextMsg.content
-            : [{ type: 'text', text: nextMsg.content }];
-          const toolResults = nextParts.filter((p: any) => p.type === 'tool_result');
-
-          if (toolResults.length) {
-            // Add tool results to content
-            for (const result of toolResults) {
-              contentParts.push({
-                type: 'tool-result',
-                toolCallId: result.tool_use_id,
-                toolName: toolUses.find((t: any) => t.id === result.tool_use_id)?.name ?? 'unknown',
-                result: typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
-              });
-            }
-            i++; // Skip the next user message since we consumed it
-          }
-        }
-
-        converted.push({
-          role: 'assistant',
-          content: contentParts.length === 1 && contentParts[0].type === 'text'
-            ? contentParts[0].text
-            : contentParts,
-        });
-      } else {
-        const text = textParts.map((p: any) => p.text).join('');
-        converted.push({ role: 'assistant', content: text });
-      }
-      continue;
-    }
-
-    if (msg.role === 'user') {
-      const text =
-        parts.find((p: any) => p.type === 'text')?.text ??
-        (typeof msg.content === 'string'
-          ? msg.content
-          : JSON.stringify(msg.content));
-
-      converted.push({ role: 'user', content: text });
-    }
-  }
-
-  return converted;
 }
 
 async function summarizeWithDirectAPI(
@@ -278,143 +114,6 @@ Focus on facts, numbers, and actionable information. Omit pleasantries, acknowle
   } messages compacted]\n${result.text.trim()}\n[END SUMMARY]`;
 }
 
-export async function summarizeWithContextEditing(
-  messages: ModelMessage[],
-  options: ContextEditingOptions = {},
-): Promise<{ messages: ModelMessage[]; tokensSaved: number }> {
-  const clearThinking = {
-    enabled: options.clearThinking?.enabled ?? true,
-    keepThinkingTurns: options.clearThinking?.keepThinkingTurns ?? 2,
-  };
-
-  const clearToolUses = {
-    enabled: options.clearToolUses?.enabled ?? true,
-    triggerInputTokens: options.clearToolUses?.triggerInputTokens ?? 20_000,
-    keepToolUses: options.clearToolUses?.keepToolUses ?? 1,
-    clearAtLeastTokens: options.clearToolUses?.clearAtLeastTokens ?? 15_000,
-    excludeTools: options.clearToolUses?.excludeTools,
-  };
-
-  const apiKey = getApiKey('ANTHROPIC_API_KEY');
-  if (!apiKey) throw new Error('Missing ANTHROPIC_API_KEY for context editing');
-
-  const client = new Anthropic({ apiKey });
-
-  // Convert to Anthropic's tool call format
-  const anthropicMessages = convertToAnthropicFormat(messages);
-
-  const systemMessage = messages.find((m) => m.role === 'system');
-
-  const edits: any[] = [];
-
-  if (clearThinking.enabled) {
-    edits.push({
-      type: 'clear_thinking_20251015',
-      keep: {
-        type: 'thinking_turns',
-        value: clearThinking.keepThinkingTurns ?? 2,
-      },
-    });
-  }
-
-  if (clearToolUses.enabled) {
-    const toolEdit: Record<string, any> = {
-      type: 'clear_tool_uses_20250919',
-      trigger: {
-        type: 'input_tokens',
-        value: clearToolUses.triggerInputTokens,
-      },
-      keep: { type: 'tool_uses', value: clearToolUses.keepToolUses },
-    };
-
-    if (clearToolUses.clearAtLeastTokens) {
-      toolEdit.clear_at_least = {
-        type: 'input_tokens',
-        value: clearToolUses.clearAtLeastTokens,
-      };
-    }
-    if (clearToolUses.excludeTools?.length) {
-      toolEdit.exclude = { tools: clearToolUses.excludeTools };
-    }
-
-    edits.push(toolEdit);
-  }
-
-  try {
-    const requestParams: any = {
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      messages: anthropicMessages,
-      system: systemMessage?.content as string | undefined,
-      betas: ['context-management-2025-06-27'],
-      context_management: { edits },
-    };
-
-    if (clearThinking.enabled) {
-      requestParams.thinking = { type: 'enabled', budget_tokens: 1024 };
-    }
-
-    const response = await client.beta.messages.create(requestParams);
-    console.log(
-      'Edit result:',
-      JSON.stringify(response.context_management, null, 2),
-    );
-
-    const appliedEdits = response.context_management?.applied_edits || [];
-
-    if (appliedEdits.length === 0) {
-      console.log('[ContextEditing] No edits applied');
-      throw new Error('Context editing failed - no edits applied');
-    }
-
-    const editedMessages = response.content || anthropicMessages;
-
-    console.log(
-      `[ContextEditing] Applied Edits: ${JSON.stringify(appliedEdits)}.`,
-    );
-
-    // Convert back to Vercel AI SDK format
-    const convertedMessages = convertFromAnthropicFormat(editedMessages);
-    const modelMessages: ModelMessage[] = systemMessage
-      ? [systemMessage, ...convertedMessages]
-      : convertedMessages;
-
-    const originalTokens = estimateTokens(messages);
-    const newTokens = estimateTokens(modelMessages);
-
-    return {
-      messages: modelMessages,
-      tokensSaved: originalTokens - newTokens,
-    };
-  } catch (err) {
-    console.error(
-      '[ContextEditing] Failed, falling back to direct summarization:',
-      err,
-    );
-
-    const keepRecentMessages = 8;
-    const splitPoint = Math.max(0, messages.length - keepRecentMessages);
-    const oldMessages = messages.slice(0, splitPoint);
-    const recentMessages = messages.slice(splitPoint);
-
-    if (oldMessages.length < 3) {
-      return { messages: recentMessages, tokensSaved: 0 };
-    }
-
-    const summaryText = await summarizeWithDirectAPI(oldMessages);
-    const summaryMessage: ModelMessage = {
-      role: 'system',
-      content: summaryText,
-    };
-
-    const finalMessages = [summaryMessage, ...recentMessages];
-    const tokensSaved =
-      estimateTokens(messages) - estimateTokens(finalMessages);
-
-    return { messages: finalMessages, tokensSaved };
-  }
-}
-
 export async function manageContext(
   messages: ModelMessage[],
   config: ContextManagerConfig = {},
@@ -433,11 +132,7 @@ export async function manageContext(
   const maxTokens = config.maxTokens ?? DEFAULT_CONTEXT_CONFIG.maxTokens;
   const keepRecentMessages =
     config.keepRecentMessages ?? DEFAULT_CONTEXT_CONFIG.keepRecentMessages;
-  const useContextEditing =
-    config.useContextEditing ?? DEFAULT_CONTEXT_CONFIG.useContextEditing;
-  const contextEditConfig = config.contextEditConfig;
-
-  // Calculate tokens including system prompt
+  
   const messageTokens = estimateTokens(messages);
   const systemTokens = config.systemPrompt
     ? estimateTokens(config.systemPrompt)
@@ -464,24 +159,9 @@ export async function manageContext(
 
   console.log(`Exceeded threshold (${originalTokens} > ${maxTokens})`);
 
-  if (useContextEditing) {
-    const { messages: editedMessages, tokensSaved } =
-      await summarizeWithContextEditing(messages, {
-        ...contextEditConfig,
-      });
-    return {
-      messages: editedMessages,
-      wasSummarized: true,
-      originalTokens,
-      newTokens: estimateTokens(editedMessages),
-      tokensSaved,
-      method: 'context-editing',
-    };
-  }
-
-  const splitPoint = Math.max(0, messages.length - keepRecentMessages);
-  const oldMessages = messages.slice(0, splitPoint);
-  const recentMessages = messages.slice(splitPoint);
+  const safeSplitPoint = findSafeSplitPoint(messages, keepRecentMessages);
+  const oldMessages = messages.slice(0, safeSplitPoint);
+  const recentMessages = messages.slice(safeSplitPoint);
 
   if (oldMessages.length < 3) {
     console.log(`Too few messages (${oldMessages.length}) to summarize.`);
@@ -495,9 +175,11 @@ export async function manageContext(
     };
   }
 
-  console.log(`Summarizing ${oldMessages.length} old messages...`);
+  console.log(
+    `Summarizing ${oldMessages.length} old messages, keeping ${recentMessages.length} recent...`
+  );
   const summaryText = await summarizeWithDirectAPI(oldMessages);
-
+  
   const summaryMessage: ModelMessage = { role: 'system', content: summaryText };
   const newMessages = [summaryMessage, ...recentMessages];
   const newTokens = estimateTokens(newMessages);
@@ -515,4 +197,40 @@ export async function manageContext(
     tokensSaved,
     method: 'api',
   };
+}
+
+function findSafeSplitPoint(messages: ModelMessage[], keepRecentCount: number): number {
+  const idealSplitPoint = Math.max(0, messages.length - keepRecentCount);
+
+  if (idealSplitPoint === 0 || idealSplitPoint >= messages.length) {
+    return idealSplitPoint;
+  }
+
+  for (let i = idealSplitPoint; i >= Math.max(0, idealSplitPoint - 3); i--) {
+    const msg = messages[i];
+
+    if (msg.role === 'tool') {
+      for (let j = i - 1; j >= 0; j--) {
+        const prevMsg = messages[j];
+        if (prevMsg.role === 'assistant') {
+          const content = Array.isArray(prevMsg.content) ? prevMsg.content : [];
+          const hasToolCalls = Array.isArray(content) && content.some((part: any) => part.type === 'tool-call');
+          if (hasToolCalls) {
+            return j;
+          }
+        }
+      }
+    }
+
+    if (msg.role === 'assistant' && i + 1 < messages.length) {
+      const content = Array.isArray(msg.content) ? msg.content : [];
+      const hasToolCalls = Array.isArray(content) && content.some((part: any) => part.type === 'tool-call');
+
+      if (hasToolCalls && messages[i + 1].role === 'tool') {
+        return i;
+      }
+    }
+  }
+
+  return idealSplitPoint;
 }

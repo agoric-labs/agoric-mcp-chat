@@ -209,6 +209,7 @@ export function processToolResult(
 export const YMAX_TOOL_CONFIGS: Record<string, ToolResultConfig> = {
   'ymax-get-all-instruments': { maxChars: 30_000 },
   'ymax-get-instrument': { maxChars: 30_000 },
+  'mintscan-get-address-transactions': { maxChars: 30_000 },
 };
 
 /**
