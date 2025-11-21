@@ -48,7 +48,7 @@ const DEFAULT_MCP_SERVER: MCPServer = {
   id: DEFAULT_MCP_SERVER_ID,
   name: "Agoric MCP Server",
   type: "sse",
-  url: "https://ymax-mcp-server.agoric-core.workers.dev/sse",
+  url: "https://agoric-mcp-server.agoric-core.workers.dev/sse",
 };
 
 export function MCPProvider(props: { children: React.ReactNode }) {
@@ -59,10 +59,19 @@ export function MCPProvider(props: { children: React.ReactNode }) {
       searchParams.get("useAgoricWebsiteMCP") || "",
     ).toLowerCase() === "true";
 
+  const useYmaxMCP = decodeURIComponent(
+    searchParams.get("theme") || "",
+  ).toLowerCase() === "ymax";
+
   if (useAgoricWebsiteMCP) {
     DEFAULT_MCP_SERVER.url =
       "https://agoric-mcp-devops-server.agoric-core.workers.dev/sse";
+  } else if (useYmaxMCP) {
+    DEFAULT_MCP_SERVER.name = "Ymax MCP Server";
+    DEFAULT_MCP_SERVER.url =
+      "https://ymax-mcp-server.agoric-core.workers.dev/sse";
   }
+
   const [_mcpServers, setMcpServers] = useLocalStorage<MCPServer[]>(
     STORAGE_KEYS.MCP_SERVERS,
     [DEFAULT_MCP_SERVER],
