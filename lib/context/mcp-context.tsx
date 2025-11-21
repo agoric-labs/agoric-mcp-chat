@@ -59,14 +59,14 @@ export function MCPProvider(props: { children: React.ReactNode }) {
       searchParams.get("useAgoricWebsiteMCP") || "",
     ).toLowerCase() === "true";
 
-  const isThemeYmax = decodeURIComponent(
+  const useYmaxMCP = decodeURIComponent(
     searchParams.get("theme") || "",
   ).toLowerCase() === "ymax";
 
   if (useAgoricWebsiteMCP) {
     DEFAULT_MCP_SERVER.url =
       "https://agoric-mcp-devops-server.agoric-core.workers.dev/sse";
-  } else if (isThemeYmax) {
+  } else if (useYmaxMCP) {
     DEFAULT_MCP_SERVER.name = "Ymax MCP Server";
     DEFAULT_MCP_SERVER.url =
       "https://ymax-mcp-server.agoric-core.workers.dev/sse";
