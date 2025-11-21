@@ -11,15 +11,13 @@ export interface AnthropicWebToolsConfig {
 
 /**
  * Adds Anthropic web search and web fetch tools to the provided tools object
- * Only adds tools if the selected model is a Claude model
- *
- * @param selectedModel - The model ID being used
+ * Assumes the caller has already validated that the model is a Claude model.
+ * 
  * @param existingTools - Existing tools object to extend
  * @param config - Optional configuration for the web tools
  * @returns Updated tools object with web tools added (if applicable)
  */
 export function addAnthropicWebTools(
-  selectedModel: string,
   existingTools: Record<string, unknown> = {},
   config: AnthropicWebToolsConfig = {}
 ): Record<string, unknown> {
