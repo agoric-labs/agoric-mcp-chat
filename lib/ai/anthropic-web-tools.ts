@@ -15,7 +15,7 @@ export interface AnthropicWebToolsConfig {
  * 
  * @param existingTools - Existing tools object to extend
  * @param config - Optional configuration for the web tools
- * @returns Updated tools object with web tools added (if applicable)
+ * @returns Updated tools object with web tools added
  */
 export function addAnthropicWebTools(
   existingTools: Record<string, unknown> = {},
