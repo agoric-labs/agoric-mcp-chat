@@ -52,19 +52,23 @@ Tests run in **3 environments**:
 
 #### Package.json `prepare` Script
 ```json
-"prepare": "[ -d .git ] && husky || true"
+"prepare": "([ -d .git ] && [ -z \"${CI:-}\" ] && [ -z \"${CF_PAGES:-}\" ] && [ -z \"${CLOUDFLARE:-}\" ] && husky) || true"
 ```
 
 **Why this conditional check?**
 - **Problem**: The `prepare` script runs during `yarn install` in ALL environments (local, GitHub Actions, Cloudflare builds)
-- **Issue**: Cloudflare Workers builds were failing because Husky tried to initialize git hooks during deployment
-- **Solution**: Only run Husky when `.git` directory exists (local development only)
-- **Benefit**: Separates testing from deployment builds
+- **Issue**: Cloudflare Workers builds were failing because Husky tried to initialize git hooks during deployment, even when `.git` directory exists
+- **Solution**: Only run Husky when ALL conditions are met:
+  1. `.git` directory exists (indicates git repository)
+  2. `$CI` is NOT set (not in CI environment)
+  3. `$CF_PAGES` is NOT set (not in Cloudflare Pages)
+  4. `$CLOUDFLARE` is NOT set (not in Cloudflare Workers)
+- **Benefit**: Completely prevents Husky initialization in any CI/deployment environment
 
 **Behavior:**
-- ✅ **Local dev**: `.git` exists → Husky initializes → Pre-commit hooks work
-- ❌ **Cloudflare build**: No `.git` → Husky skipped → Build succeeds
-- ⚠️ **GitHub Actions**: Has `.git` but uses explicit test workflow (not hooks)
+- ✅ **Local dev**: `.git` exists AND no CI vars → Husky initializes → Pre-commit hooks work
+- ❌ **Cloudflare build**: CI vars are set → Husky skipped → Build succeeds
+- ❌ **GitHub Actions**: `$CI` is set → Husky skipped → Uses explicit test workflow instead
 
 #### Pre-commit Hook CI Check
 ```bash

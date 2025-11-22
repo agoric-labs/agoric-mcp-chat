@@ -17,7 +17,7 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:mcp": "vitest run test/mcp-schema-validation",
-    "prepare": "[ -d .git ] && husky || true"
+    "prepare": "([ -d .git ] && [ -z \"${CI:-}\" ] && [ -z \"${CF_PAGES:-}\" ] && [ -z \"${CLOUDFLARE:-}\" ] && husky) || true"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.0",
