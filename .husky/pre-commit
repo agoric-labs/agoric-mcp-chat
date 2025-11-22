@@ -1,1 +1,24 @@
+#!/bin/sh
+
+# Pre-commit Hook: Run MCP Schema Validation Tests
+#
+# Purpose:
+#   Ensures all MCP tool schemas are validated before code is committed.
+#   This prevents schema drift and catches missing/orphaned schemas early.
+#
+# Behavior:
+#   - Local commits: Runs all tests via 'yarn test:run'
+#   - CI environments (Cloudflare, etc.): Skips tests to prevent deployment failures
+#
+# Why skip in CI?
+#   CI environments set the $CI variable. We skip here because:
+#   1. GitHub Actions has a dedicated test workflow (.github/workflows/test.yml)
+#   2. Cloudflare Workers builds should only build/deploy, not test
+#   3. Tests are not appropriate during the 'yarn install' prepare phase
+#
+# Note: This only affects git hooks. Explicit test commands (yarn test:run) still work.
+
+[ -n "$CI" ] && echo "Skipping tests in CI environment (tests run via GitHub Actions)" && exit 0
+
+# Run tests before allowing commit
 yarn test:run
