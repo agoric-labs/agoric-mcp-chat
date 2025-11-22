@@ -16,7 +16,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Testing Commands
 
-- `node test-ymax-api.js` - Test the ymax portfolio optimization API with real multi-chain data
+- `yarn test` - Run tests in watch mode (interactive)
+- `yarn test:run` - Run all tests once (CI mode)
+- `yarn test:ui` - Open Vitest UI dashboard
+- `yarn test:mcp` - Run MCP schema validation tests specifically
+- `node test/test-ymax-api.js` - Test the ymax portfolio optimization API with real multi-chain data
 
 ## Architecture Overview
 
@@ -92,10 +96,54 @@ The `/api/ymax` endpoint provides AI-powered portfolio analysis for DeFi yield o
 - **Auto-installation**: Automatically installs Python packages for stdio MCP servers
 - **Cross-Origin Support**: APIs include comprehensive CORS headers for external access
 
+## Testing Strategy
+
+### MCP Schema Regression Tests
+
+The project includes automated regression tests to ensure MCP tool schemas stay synchronized with actual MCP server implementations.
+
+**Test File:** `test/mcp-schema-validation.test.ts`
+
+**What It Tests:**
+- All tools from MCP servers have corresponding schema definitions in `/lib/mcp/`
+- No orphaned schemas (schemas without matching server tools)
+- Schema structure validation (each schema has `inputSchema` property)
+- Coverage across all three MCP servers
+
+**MCP Servers Tested:**
+- **Agoric MCP Server**: `https://agoric-mcp-server.agoric-core.workers.dev/sse`
+  - Schema file: `lib/mcp/agoric-tool-schemas.ts`
+  - ~38 tools
+- **Ymax MCP Server**: `https://ymax-mcp-server.agoric-core.workers.dev/sse`
+  - Schema file: `lib/mcp/ymax-tool-schemas.ts`
+  - ~25 tools
+- **Agoric DevOps MCP Server**: `https://agoric-mcp-devops-server.agoric-core.workers.dev/sse`
+  - Schema file: `lib/mcp/agoric-devops-tool-schemas.ts`
+  - ~10 tools
+
+**Test Execution:**
+- **Pre-commit Hook**: Tests run automatically before each commit via Husky
+- **CI/CD**: GitHub Actions runs tests on push/PR to main, develop branches
+- **Manual**: Run `yarn test:mcp` anytime
+
+**Benefits:**
+- Early detection of schema drift when MCP servers change
+- Prevents runtime errors from missing schemas
+- Documents tool coverage as living test suite
+- Catches breaking changes before production
+
+### Test Framework
+
+- **Framework**: Vitest (modern, fast, TypeScript-native)
+- **Configuration**: `vitest.config.ts`
+- **Timeout**: 60 seconds per test (network calls to live MCP servers)
+- **Watch Mode**: `yarn test` for development with hot reload
+
 ## Development Notes
 
 - Uses yarn as package manager
-- TypeScript throughout with strict configuration  
+- TypeScript throughout with strict configuration
 - Component library based on shadcn/ui
 - Database migrations managed through Drizzle Kit
 - Deployment optimized for Cloudflare Workers via OpenNext
+- Pre-commit hooks via Husky ensure code quality and test coverage
