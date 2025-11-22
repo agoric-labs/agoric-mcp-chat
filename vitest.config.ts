@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    timeout: 60000, // 60s for MCP server connections over internet
+    testTimeout: 60000, // 60s for MCP server connections over internet
     hookTimeout: 60000,
   },
   resolve: {
