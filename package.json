@@ -12,7 +12,12 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:mcp": "vitest run test/mcp-schema-validation",
+    "prepare": "husky"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.0",
@@ -73,15 +78,18 @@
     "@types/pg": "^8.11.13",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "@vitest/ui": "^4.0.13",
     "dotenv": "^16.5.0",
     "drizzle-kit": "^0.31.0",
     "esbuild": ">=0.25.0",
     "eslint": "^9.24.0",
     "eslint-config-next": "15.3.0",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "husky": "^9.1.7",
     "pg-pool": "^3.8.0",
     "tailwindcss": "^4.1.4",
     "typescript": "^5.8.3",
+    "vitest": "^4.0.13",
     "wrangler": "^4.14.0"
   }
 }
