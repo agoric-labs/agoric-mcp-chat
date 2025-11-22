@@ -11,14 +11,19 @@
 #   - CI environments (Cloudflare, etc.): Skips tests to prevent deployment failures
 #
 # Why skip in CI?
-#   CI environments set the $CI variable. We skip here because:
+#   CI environments set various environment variables ($CI, $CF_PAGES, etc.). We skip here because:
 #   1. GitHub Actions has a dedicated test workflow (.github/workflows/test.yml)
-#   2. Cloudflare Workers builds should only build/deploy, not test
+#   2. Cloudflare Pages/Workers builds should only build/deploy, not test
 #   3. Tests are not appropriate during the 'yarn install' prepare phase
 #
 # Note: This only affects git hooks. Explicit test commands (yarn test:run) still work.
 
-[ -n "$CI" ] && echo "Skipping tests in CI environment (tests run via GitHub Actions)" && exit 0
+# Check for CI environment variables (CI, GITHUB_ACTIONS, CF_PAGES, CLOUDFLARE)
+# Cloudflare Pages sets CF_PAGES=1, GitHub Actions sets GITHUB_ACTIONS=true
+if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$CF_PAGES" ] || [ -n "$CLOUDFLARE" ]; then
+  echo "Skipping tests in CI environment (tests run via GitHub Actions)"
+  exit 0
+fi
 
 # Run tests before allowing commit
 yarn test:run

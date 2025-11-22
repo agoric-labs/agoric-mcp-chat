@@ -68,13 +68,21 @@ Tests run in **3 environments**:
 
 #### Pre-commit Hook CI Check
 ```bash
-[ -n "$CI" ] && echo "Skipping tests in CI" && exit 0
+if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$CF_PAGES" ] || [ -n "$CLOUDFLARE" ]; then
+  echo "Skipping tests in CI environment"
+  exit 0
+fi
 ```
 
 **Why skip in CI?**
 - Extra safety layer if Husky somehow gets initialized in CI environments
 - Prevents deployment builds from being blocked by test failures
 - Tests still run via GitHub Actions workflow (explicit command)
+- Checks multiple environment variables because different CI systems use different names:
+  - `$CI` - Generic CI indicator (set by most CI systems)
+  - `$GITHUB_ACTIONS` - GitHub Actions specific
+  - `$CF_PAGES` - Cloudflare Pages builds
+  - `$CLOUDFLARE` - Cloudflare Workers builds
 
 ### Test Coverage
 
