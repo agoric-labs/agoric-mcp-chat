@@ -17,6 +17,12 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:mcp": "vitest run test/mcp-schema-validation",
+    "test:integration": "vitest run test/integration",
+    "test:integration:mcp": "vitest run test/integration/mcp-servers",
+    "test:integration:chat": "vitest run test/integration/chat-api",
+    "test:integration:ymax": "vitest run test/integration/ymax-api",
+    "test:integration:support": "vitest run test/integration/support-api",
+    "test:integration:e2e": "vitest run test/integration/e2e-flows",
     "prepare": "husky"
   },
   "dependencies": {
