@@ -14,6 +14,7 @@ import { spawn } from "child_process";
 import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-tool-schemas";
 import { manageContext } from '@/lib/context-manager';
 import { wrapToolExecution } from '@/lib/tool-result-manager';
+import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -262,6 +263,11 @@ export async function POST(req: Request) {
         }
       }
     });
+  }
+
+  // Add Anthropic Web Search Tool if using Claude models
+  if (selectedModel.startsWith('claude-')) {
+    tools = addAnthropicWebTools(tools);
   }
 
   // console.log("messages", messages);
