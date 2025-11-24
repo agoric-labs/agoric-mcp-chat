@@ -638,19 +638,32 @@ describe('Support API Integration Tests', () => {
 
       expect(text.length).toBeGreaterThan(0);
 
-      // 1. Should contain refusal language
+      // 1. Should contain refusal language indicating scope limitation
       const refusalPatterns = [
         /cannot|can't|unable to/i,
         /not (able|designed|intended) to/i,
-        /outside (of )?(my|the) (scope|expertise|knowledge)/i,
-        /focus(ed)? on (Fast USDC|Agoric)/i,
+        /outside (of )?(my|the) (scope|expertise|knowledge|support)/i,
+        /focus(ed)? (exclusively )?(on|for) (Fast USDC|Agoric)/i,
         /help (you )?with (Fast USDC|Agoric|support)/i
       ];
 
       const containsRefusal = refusalPatterns.some(pattern => pattern.test(text));
       expect(containsRefusal).toBe(true);
 
-      // 2. Should NOT contain weather-related content
+      // 2. Should offer Fast USDC support capabilities instead
+      const helpfulRedirectPatterns = [
+        /can help (with|you with)/i,
+        /transaction.*(tracking|monitoring|diagnostics)/i,
+        /troubleshooting/i,
+        /dashboard/i,
+        /stuck transaction/i,
+        /(system|performance) monitoring/i
+      ];
+
+      const offersHelp = helpfulRedirectPatterns.some(pattern => pattern.test(text));
+      expect(offersHelp).toBe(true);
+
+      // 3. Should NOT contain weather-related content
       const weatherKeywords = /temperature|sunny|cloudy|rain|forecast|degrees|celsius|fahrenheit/i;
       expect(text).not.toMatch(weatherKeywords);
     }, TEST_TIMEOUTS.STREAMING);
