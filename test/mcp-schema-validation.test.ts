@@ -65,10 +65,9 @@ async function fetchMcpServerTools(serverKey: string): Promise<string[]> {
 
     console.log(`✅ Connected to ${serverConfig.name}`);
 
-    // Get tools with schemas - this returns the actual tools object
-    const mcpTools = await mcpClient.tools({
-      schemas: serverConfig.schemas,
-    });
+    // Get complete tool list from server WITHOUT schema filtering
+    // This ensures we catch missing schemas for all server tools
+    const mcpTools = await mcpClient.tools();
 
     const toolNames = Object.keys(mcpTools);
 
