@@ -22,7 +22,7 @@ export const SAMPLE_MESSAGES = {
   SIMPLE_GREETING: createUserMessage('Hello, how are you?'),
   AGORIC_QUESTION: createUserMessage('What is Agoric?'),
   PORTFOLIO_QUERY: createUserMessage('Show me my portfolio balance'),
-  YMAX_OPTIMIZATION: createUserMessage('Optimize my portfolio for maximum yield'),
+  YMAX_OPTIMIZATION: createUserMessage('Optimize my portfolio (pick any available from portfolio0, portfolio1, portfolio2) for maximum yield'),
   MULTI_CHAIN_QUERY: createUserMessage('Compare yields across Aave and Compound'),
   SUPPORT_QUESTION: createUserMessage('How do I set up a validator node?'),
   IBC_TRANSFER: createUserMessage('Transfer 100 USDC from Ethereum to Noble'),

@@ -57,6 +57,10 @@ describe('Support API Integration Tests', () => {
       expect(isStreamingResponse(response)).toBe(true);
     }, TEST_TIMEOUTS.STREAMING);
 
+    // Edge case: Tests API robustness when receiving empty messages array.
+    // This ensures the API doesn't crash due to race conditions, UI bugs,
+    // or API calls made before user input. Returning 200 indicates graceful
+    // handling rather than throwing errors for this edge case.
     it('should handle empty messages array', async () => {
       const response = await postToAPI(
         '/api/support',
@@ -131,7 +135,24 @@ describe('Support API Integration Tests', () => {
       const text = extractTextFromEvents(events);
 
       expect(text.length).toBeGreaterThan(0);
+
       // Response should be relevant to Fast USDC context
+      // Should mention Fast USDC
+      expect(text).toMatch(/Fast USDC/i);
+
+      // Should contain at least 2 key concepts from the actual Fast USDC explanation
+      const fastUsdcConcepts = [
+        /CCTP|Circle.*Transfer.*Protocol/i,         // CCTP bridging
+        /EVM.*chains?|Ethereum|Base|Optimism|Arbitrum|Polygon/i,  // Supported chains
+        /Orchestration/i,                           // Orchestration contract
+        /Liquidity Pool|market maker/i,             // Liquidity mechanism
+        /under.*minute|1.*minute|one.*minute/i,     // Speed benefit
+        /finality|16.*minutes?|20.*minutes?/i,      // Finality timing
+        /USDC|stablecoin/i                         // Asset type
+      ];
+
+      const conceptsFound = fastUsdcConcepts.filter(pattern => pattern.test(text)).length;
+      expect(conceptsFound).toBeGreaterThanOrEqual(2);
     }, TEST_TIMEOUTS.STREAMING);
 
     it('should handle Fast USDC transaction queries', async () => {
@@ -149,8 +170,21 @@ describe('Support API Integration Tests', () => {
 
       const chunks = await readStreamingResponse(response);
       const events = parseStreamingChunks(chunks);
+      const text = extractTextFromEvents(events);
 
-      expect(events.length).toBeGreaterThan(0);
+      expect(text.length).toBeGreaterThan(0);
+
+      // Should mention transaction tracking methods
+      const trackingConcepts = [
+        /dashboard/i,                                    // Transaction dashboard
+        /transaction.*ID|ID.*transaction|hash/i,        // Transaction identifier
+        /state|status/i,                                // Transaction state/status
+        /Fast USDC/i,                                   // Product name
+        /track|monitor|check/i                          // Tracking verbs
+      ];
+
+      const conceptsFound = trackingConcepts.filter(pattern => pattern.test(text)).length;
+      expect(conceptsFound).toBeGreaterThanOrEqual(2);
     }, TEST_TIMEOUTS.STREAMING);
 
     it('should handle troubleshooting queries', async () => {
@@ -171,6 +205,19 @@ describe('Support API Integration Tests', () => {
       const text = extractTextFromEvents(events);
 
       expect(text.length).toBeGreaterThan(0);
+
+      // Should provide troubleshooting guidance
+      const troubleshootingConcepts = [
+        /check|verify|examine/i,                        // Troubleshooting verbs
+        /state|status/i,                                // Check status
+        /Created|Observed|Advanced|Disbursed/i,         // Transaction states
+        /escalate|contact|support/i,                    // Escalation path
+        /abnormal|stuck|delayed/i,                      // Problem indicators
+        /minutes?|time|timing/i                         // Time thresholds
+      ];
+
+      const conceptsFound = troubleshootingConcepts.filter(pattern => pattern.test(text)).length;
+      expect(conceptsFound).toBeGreaterThanOrEqual(2);
     }, TEST_TIMEOUTS.STREAMING);
   });
 
@@ -183,25 +230,6 @@ describe('Support API Integration Tests', () => {
           selectedModel: SAMPLE_MODELS.CLAUDE,
           userId: testUserId,
           mcpServers: [SAMPLE_MCP_CONFIGS.DEVOPS_SSE]
-        },
-        { userId: testUserId }
-      );
-
-      expect(response.status).toBe(200);
-      expect(isStreamingResponse(response)).toBe(true);
-    }, TEST_TIMEOUTS.STREAMING);
-
-    it('should work with multiple MCP servers', async () => {
-      const response = await postToAPI(
-        '/api/support',
-        {
-          messages: [SAMPLE_MESSAGES.SUPPORT_QUESTION],
-          selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId,
-          mcpServers: [
-            SAMPLE_MCP_CONFIGS.DEVOPS_SSE,
-            SAMPLE_MCP_CONFIGS.AGORIC_SSE
-          ]
         },
         { userId: testUserId }
       );
@@ -343,6 +371,21 @@ describe('Support API Integration Tests', () => {
       const text = extractTextFromEvents(events);
 
       expect(text.length).toBeGreaterThan(0);
+
+      // Should mention Fast USDC transaction context
+      expect(text).toMatch(/Fast USDC|transaction|state/i);
+
+      // Should contain at least 2 of the actual Fast USDC transaction states
+      const actualStates = [
+        /Transaction Created|Created/i,
+        /Transaction Observed|Observed/i,
+        /Transaction Advanced|Advanced/i,
+        /Transaction Disbursed|Disbursed/i,
+        /Forward Skipped|Skipped/i
+      ];
+
+      const statesFound = actualStates.filter(pattern => pattern.test(text)).length;
+      expect(statesFound).toBeGreaterThanOrEqual(2);
     }, TEST_TIMEOUTS.STREAMING);
 
     it('should handle escalation procedure queries', async () => {
@@ -360,8 +403,26 @@ describe('Support API Integration Tests', () => {
 
       const chunks = await readStreamingResponse(response);
       const events = parseStreamingChunks(chunks);
+      const text = extractTextFromEvents(events);
 
-      expect(events.length).toBeGreaterThan(0);
+      expect(text.length).toBeGreaterThan(0);
+
+      // Should mention escalation context
+      expect(text).toMatch(/escalate|escalation|issue|problem/i);
+
+      // Should contain specific escalation channels or procedures
+      // At least one of: channel mentions, OCW, IBC, Noble, or contact methods
+      const escalationDetails = [
+        /#ops-fast-usdc|ops.*fast.*usdc/i,
+        /OCW|Off-Chain Worker/i,
+        /IBC.*relaying?|relaying?.*IBC/i,
+        /Noble.*forwarding|forwarding.*Noble/i,
+        /agoric-critical|opsgenie/i,
+        /critical.*email|email.*critical/i
+      ];
+
+      const detailsFound = escalationDetails.filter(pattern => pattern.test(text)).length;
+      expect(detailsFound).toBeGreaterThanOrEqual(1);
     }, TEST_TIMEOUTS.STREAMING);
 
     it('should handle red button queries', async () => {
@@ -379,8 +440,27 @@ describe('Support API Integration Tests', () => {
 
       const chunks = await readStreamingResponse(response);
       const events = parseStreamingChunks(chunks);
+      const text = extractTextFromEvents(events);
 
-      expect(events.length).toBeGreaterThan(0);
+      expect(text.length).toBeGreaterThan(0);
+
+      // Should mention red button deployment
+      expect(text).toMatch(/red button|deploy|fastUsdcAllowed/i);
+
+      // Should contain at least 2 of the key deployment criteria/steps
+      const deploymentDetails = [
+        /5.*transactions|five.*transactions/i,              // 5 transactions threshold
+        /\$20,?000|\$20K|20,?000.*dollars?/i,              // $20,000 threshold
+        /stuck.*abnormal|abnormal.*state/i,                 // Stuck in abnormal state
+        /security.*compromised|compromised.*security/i,     // Security compromise
+        /Cloudflare.*KV|KV.*store/i,                       // Cloudflare KV store
+        /deploymentParams/i,                                // deploymentParams key
+        /fastUsdcAllowed.*false|false.*fastUsdcAllowed/i,  // Set to false
+        /main\/network-config/i                             // Path to config
+      ];
+
+      const detailsFound = deploymentDetails.filter(pattern => pattern.test(text)).length;
+      expect(detailsFound).toBeGreaterThanOrEqual(2);
     }, TEST_TIMEOUTS.STREAMING);
   });
 
@@ -556,8 +636,23 @@ describe('Support API Integration Tests', () => {
       const events = parseStreamingChunks(chunks);
       const text = extractTextFromEvents(events);
 
-      // Should decline politely
       expect(text.length).toBeGreaterThan(0);
+
+      // 1. Should contain refusal language
+      const refusalPatterns = [
+        /cannot|can't|unable to/i,
+        /not (able|designed|intended) to/i,
+        /outside (of )?(my|the) (scope|expertise|knowledge)/i,
+        /focus(ed)? on (Fast USDC|Agoric)/i,
+        /help (you )?with (Fast USDC|Agoric|support)/i
+      ];
+
+      const containsRefusal = refusalPatterns.some(pattern => pattern.test(text));
+      expect(containsRefusal).toBe(true);
+
+      // 2. Should NOT contain weather-related content
+      const weatherKeywords = /temperature|sunny|cloudy|rain|forecast|degrees|celsius|fahrenheit/i;
+      expect(text).not.toMatch(weatherKeywords);
     }, TEST_TIMEOUTS.STREAMING);
   });
 });

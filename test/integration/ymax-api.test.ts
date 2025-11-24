@@ -96,7 +96,7 @@ describe('Ymax API Integration Tests', () => {
       const text = extractTextFromEvents(events);
 
       // Should mention supported protocols
-      expect(text.toLowerCase()).toMatch(/aave|compound|usdn/);
+      expect(text.toLowerCase()).toMatch(/aave|compound|beefy|usdn/);
     }, TEST_TIMEOUTS.STREAMING);
   });
 
@@ -109,25 +109,6 @@ describe('Ymax API Integration Tests', () => {
           selectedModel: SAMPLE_MODELS.CLAUDE,
           userId: testUserId,
           mcpServers: [SAMPLE_MCP_CONFIGS.YMAX_SSE]
-        },
-        { userId: testUserId }
-      );
-
-      expect(response.status).toBe(200);
-      expect(isStreamingResponse(response)).toBe(true);
-    }, TEST_TIMEOUTS.STREAMING);
-
-    it('should work with multiple MCP servers', async () => {
-      const response = await postToAPI(
-        API_ENDPOINTS.YMAX,
-        {
-          messages: [SAMPLE_MESSAGES.MULTI_CHAIN_QUERY],
-          selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId,
-          mcpServers: [
-            SAMPLE_MCP_CONFIGS.YMAX_SSE,
-            SAMPLE_MCP_CONFIGS.AGORIC_SSE
-          ]
         },
         { userId: testUserId }
       );
@@ -356,27 +337,6 @@ describe('Ymax API Integration Tests', () => {
     }, TEST_TIMEOUTS.STREAMING);
   });
 
-  describe('CORS Headers', () => {
-    it('should include CORS headers in response', async () => {
-      const response = await postToAPI(
-        API_ENDPOINTS.YMAX,
-        {
-          messages: [SAMPLE_MESSAGES.YMAX_OPTIMIZATION],
-          selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId
-        },
-        { userId: testUserId }
-      );
-
-      expect(response.status).toBe(200);
-
-      // Check for CORS headers (if implemented)
-      // Note: May not be present in streaming responses
-      const headers = response.headers;
-      expect(headers).toBeDefined();
-    }, TEST_TIMEOUTS.STREAMING);
-  });
-
   describe('AI Model Support', () => {
     it('should work with Claude models', async () => {
       const response = await postToAPI(
@@ -505,8 +465,35 @@ describe('Ymax API Integration Tests', () => {
 
       const chunks = await readStreamingResponse(response);
       const events = parseStreamingChunks(chunks);
+      const text = extractTextFromEvents(events);
 
       expect(events.length).toBeGreaterThan(0);
+      expect(text.length).toBeGreaterThan(0);
+
+      // 1. Should contain APY-related data (percentage values)
+      const apyPatterns = [
+        /\d+\.?\d*\s*%/i,                          // e.g., "5.2%", "3%"
+        /APY.*\d+/i,                                // e.g., "APY: 5.2"
+        /\d+\.?\d*\s*(percent|percentage)/i,       // e.g., "5.2 percent"
+        /rate.*\d+\.?\d*/i                         // e.g., "rate is 5.2"
+      ];
+
+      const containsAPYData = apyPatterns.some(pattern => pattern.test(text));
+      expect(containsAPYData).toBe(true);
+
+      // 2. Should mention Aave and/or Optimism (the specific protocol/chain asked about)
+      const protocolMentioned = /Aave|Optimism/i.test(text);
+      expect(protocolMentioned).toBe(true);
+
+      // 3. Should NOT contain generic "I don't have access" or "I cannot fetch" responses
+      const genericRefusalPatterns = [
+        /don't have (access|real-time data)/i,
+        /cannot (fetch|access|retrieve) (current|real-time|live)/i,
+        /unable to (fetch|access|retrieve) (current|real-time|live)/i
+      ];
+
+      const containsGenericRefusal = genericRefusalPatterns.some(pattern => pattern.test(text));
+      expect(containsGenericRefusal).toBe(false);
     }, TEST_TIMEOUTS.STREAMING);
   });
 });

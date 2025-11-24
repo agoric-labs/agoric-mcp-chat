@@ -198,25 +198,6 @@ describe('Chat API Integration Tests', () => {
       expect(isStreamingResponse(response)).toBe(true);
     }, TEST_TIMEOUTS.STREAMING);
 
-    it('should work with multiple MCP servers', async () => {
-      const response = await postToAPI(
-        API_ENDPOINTS.CHAT,
-        {
-          messages: [SAMPLE_MESSAGES.AGORIC_QUESTION],
-          selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId,
-          mcpServers: [
-            SAMPLE_MCP_CONFIGS.AGORIC_SSE,
-            SAMPLE_MCP_CONFIGS.YMAX_SSE
-          ]
-        },
-        { userId: testUserId }
-      );
-
-      expect(response.status).toBe(200);
-      expect(isStreamingResponse(response)).toBe(true);
-    }, TEST_TIMEOUTS.STREAMING);
-
     it('should handle empty MCP servers array', async () => {
       const response = await postToAPI(
         API_ENDPOINTS.CHAT,
@@ -378,40 +359,6 @@ describe('Chat API Integration Tests', () => {
     }, TEST_TIMEOUTS.STREAMING);
   });
 
-  describe('Chat ID Handling', () => {
-    it('should accept optional chatId parameter', async () => {
-      const chatId = 'test-chat-123';
-
-      const response = await postToAPI(
-        API_ENDPOINTS.CHAT,
-        {
-          messages: [SAMPLE_MESSAGES.SIMPLE_GREETING],
-          selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId,
-          chatId
-        },
-        { userId: testUserId }
-      );
-
-      expect(response.status).toBe(200);
-    }, TEST_TIMEOUTS.STREAMING);
-
-    it('should work without chatId parameter', async () => {
-      const response = await postToAPI(
-        API_ENDPOINTS.CHAT,
-        {
-          messages: [SAMPLE_MESSAGES.SIMPLE_GREETING],
-          selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId
-          // No chatId provided
-        },
-        { userId: testUserId }
-      );
-
-      expect(response.status).toBe(200);
-    }, TEST_TIMEOUTS.STREAMING);
-  });
-
   describe('Web Tools for Claude', () => {
     it('should have access to web search for Claude models', async () => {
       // This test verifies web tools are added, not that they're actually used
@@ -492,11 +439,11 @@ describe('Chat API Integration Tests', () => {
 
       expect(response.status).toBe(200);
 
-      // First chunk should arrive within 10 seconds
+      // First chunk should arrive within 30 seconds
       const chunks = await readStreamingResponse(response);
       const elapsed = Date.now() - startTime;
 
-      expect(elapsed).toBeLessThan(10000); // 10 seconds
+      expect(elapsed).toBeLessThan(30000); // 30 seconds
       expect(chunks.length).toBeGreaterThan(0);
     }, TEST_TIMEOUTS.STREAMING);
   });

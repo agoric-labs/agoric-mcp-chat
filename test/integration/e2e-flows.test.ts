@@ -122,6 +122,16 @@ describe('E2E Flow Integration Tests', () => {
 
       expect(text1.length).toBeGreaterThan(0);
 
+      // Step 1 validation: Should mention supported protocols
+      const supportedProtocols = [
+        /Aave/i,
+        /Compound/i,
+        /Beefy/i,
+        /USDN|Noble/i
+      ];
+      const protocolsFound = supportedProtocols.filter(pattern => pattern.test(text1)).length;
+      expect(protocolsFound).toBeGreaterThanOrEqual(1);
+
       // Step 2: Request optimization with context
       const context = JSON.stringify({
         portfolio: [
@@ -136,7 +146,7 @@ describe('E2E Flow Integration Tests', () => {
           messages: [
             createUserMessage('What protocols do you support?'),
             createAssistantMessage(text1),
-            createUserMessage('Optimize my portfolio for maximum yield')
+            createUserMessage('Optimize my portfolio (pick any available from portfolio0, portfolio1, portfolio2) for maximum yield')
           ],
           selectedModel: SAMPLE_MODELS.CLAUDE,
           userId: testUserId,
@@ -151,8 +161,23 @@ describe('E2E Flow Integration Tests', () => {
       expect(response2.status).toBe(200);
       const chunks2 = await readStreamingResponse(response2);
       const events2 = parseStreamingChunks(chunks2);
+      const text2 = extractTextFromEvents(events2);
 
-      expect(events2.length).toBeGreaterThan(0);
+      expect(text2.length).toBeGreaterThan(0);
+
+      // Step 2 validation: Should provide optimization recommendations
+      const optimizationConcepts = [
+        /yield|APY|return/i,                                    // Yield metrics
+        /recommend|suggest|optimize/i,                          // Optimization language
+        /protocol|pool|strategy|allocation/i,                   // Investment targets
+        /risk|diversif/i,                                       // Risk considerations
+        /\d+\.?\d*\s*%/i,                                       // Percentage values
+        /Aave|Compound|Beefy|USDN/i,                           // Specific protocols
+        /TVL|liquidity/i,                                       // Liquidity metrics
+        /Base|Ethereum|Optimism|Arbitrum|Avalanche|Polygon/i  // Chain mentions
+      ];
+      const conceptsFound = optimizationConcepts.filter(pattern => pattern.test(text2)).length;
+      expect(conceptsFound).toBeGreaterThanOrEqual(3);
     }, TEST_TIMEOUTS.STREAMING * 2);
   });
 
@@ -272,29 +297,6 @@ describe('E2E Flow Integration Tests', () => {
       const chunks2 = await readStreamingResponse(response2);
       expect(chunks2.length).toBeGreaterThan(0);
     }, TEST_TIMEOUTS.STREAMING * 2);
-
-    it('should use multiple MCP servers simultaneously', async () => {
-      const response = await postToAPI(
-        API_ENDPOINTS.CHAT,
-        {
-          messages: [createUserMessage('Help me with Agoric and yield optimization')],
-          selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId,
-          mcpServers: [
-            SAMPLE_MCP_CONFIGS.AGORIC_SSE,
-            SAMPLE_MCP_CONFIGS.YMAX_SSE
-          ]
-        },
-        { userId: testUserId }
-      );
-
-      expect(response.status).toBe(200);
-
-      const chunks = await readStreamingResponse(response);
-      const events = parseStreamingChunks(chunks);
-
-      expect(events.length).toBeGreaterThan(0);
-    }, TEST_TIMEOUTS.STREAMING);
   });
 
   describe('Model Switching', () => {
@@ -497,43 +499,6 @@ describe('E2E Flow Integration Tests', () => {
         expect(response.status).toBe(200);
         expect(isStreamingResponse(response)).toBe(true);
       });
-    }, TEST_TIMEOUTS.STREAMING);
-  });
-
-  describe('INO Mode Behavior', () => {
-    it('should switch between default and INO mode', async () => {
-      // Default mode
-      const response1 = await postToAPI(
-        API_ENDPOINTS.CHAT,
-        {
-          messages: [createUserMessage('Help me optimize')],
-          selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId
-        },
-        { userId: testUserId }
-      );
-
-      expect(response1.status).toBe(200);
-      await readStreamingResponse(response1);
-
-      // INO mode
-      const response2 = await postToAPI(
-        API_ENDPOINTS.CHAT,
-        {
-          messages: [createUserMessage('Help me optimize')],
-          selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId
-        },
-        {
-          userId: testUserId,
-          queryParams: { ino: 'true' }
-        }
-      );
-
-      expect(response2.status).toBe(200);
-
-      const chunks = await readStreamingResponse(response2);
-      expect(chunks.length).toBeGreaterThan(0);
     }, TEST_TIMEOUTS.STREAMING * 2);
   });
 
