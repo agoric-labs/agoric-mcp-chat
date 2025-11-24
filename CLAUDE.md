@@ -139,6 +139,26 @@ The project includes automated regression tests to ensure MCP tool schemas stay 
 - **Timeout**: 60 seconds per test (network calls to live MCP servers)
 - **Watch Mode**: `yarn test` for development with hot reload
 
+### Integration Test Configuration
+
+Integration tests automatically detect the environment and use the appropriate base URL:
+
+- **Local Development**: `http://localhost:3000` (default)
+- **CI/CD (GitHub Actions)**: `https://chat.agoric.net` (when `CI=true` or `GITHUB_ACTIONS=true`)
+- **Custom**: Set `TEST_BASE_URL` environment variable to override
+
+**Example:**
+```bash
+# Local testing (default)
+yarn test:run test/integration/ymax-api.test.ts
+
+# Test against production
+TEST_BASE_URL=https://chat.agoric.net yarn test:run test/integration/ymax-api.test.ts
+
+# Test against custom environment
+TEST_BASE_URL=https://staging.example.com yarn test:run test/integration/ymax-api.test.ts
+```
+
 ## Development Notes
 
 - Uses yarn as package manager

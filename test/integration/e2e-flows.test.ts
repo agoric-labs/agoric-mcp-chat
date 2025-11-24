@@ -198,7 +198,7 @@ describe('E2E Flow Integration Tests', () => {
       const events2 = parseStreamingChunks(chunks2);
 
       expect(events2.length).toBeGreaterThan(0);
-    }, TEST_TIMEOUTS.STREAMING * 2);
+    }, TEST_TIMEOUTS.STREAMING * 3);
   });
 
   describe('Cross-API Workflows', () => {

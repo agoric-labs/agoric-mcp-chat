@@ -91,6 +91,36 @@ export function createToolResultMessage(
 }
 
 /**
+ * Get the base URL for API tests
+ *
+ * Automatically detects the environment and returns the appropriate base URL:
+ * - CI/CD: https://chat.agoric.net (when CI=true or GITHUB_ACTIONS=true)
+ * - Custom: Uses TEST_BASE_URL environment variable if set
+ * - Local: http://localhost:3000 (default)
+ *
+ * @returns The base URL for making API requests
+ *
+ * @example
+ * // In CI, returns: https://chat.agoric.net
+ * // Locally, returns: http://localhost:3000
+ * const baseURL = getBaseURL();
+ */
+export function getBaseURL(): string {
+  // Check if we're in CI environment
+  if (process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true') {
+    return 'https://chat.agoric.net';
+  }
+
+  // Check for custom test URL from environment
+  if (process.env.TEST_BASE_URL) {
+    return process.env.TEST_BASE_URL;
+  }
+
+  // Default to localhost
+  return 'http://localhost:3000';
+}
+
+/**
  * Make a POST request to an API endpoint
  */
 export async function postToAPI(
@@ -105,7 +135,8 @@ export async function postToAPI(
   const { userId, queryParams, headers = {} } = options || {};
 
   // Build URL with query params
-  const url = new URL(endpoint, 'http://localhost:3000');
+  const baseURL = getBaseURL();
+  const url = new URL(endpoint, baseURL);
   if (queryParams) {
     Object.entries(queryParams).forEach(([key, value]) => {
       url.searchParams.append(key, value);
