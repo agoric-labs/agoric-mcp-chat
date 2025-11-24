@@ -46,13 +46,6 @@ yarn test:mcp                    # MCP schema validation only
 ### Integration Tests
 ```bash
 yarn test:integration            # All integration tests
-
-# Individual test suites
-yarn test:integration:mcp        # MCP server tests
-yarn test:integration:chat       # Chat API tests
-yarn test:integration:ymax       # Ymax API tests
-yarn test:integration:support    # Support API tests
-yarn test:integration:e2e        # E2E flow tests
 ```
 
 ## Test Suites
