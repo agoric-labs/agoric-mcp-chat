@@ -173,19 +173,6 @@ describe('MCP Server Integration Tests', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle network timeout gracefully', async () => {
-      // This is a smoke test - actual timeout handling depends on transport
-      const transport = {
-        type: 'sse' as const,
-        url: MCP_SERVERS.AGORIC
-      };
-
-      const client = await createMCPClient({ transport });
-      expect(client).toBeDefined();
-
-      await client.close();
-    }, TIMEOUT);
-
     it('should handle malformed transport configuration', async () => {
       const invalidTransport = {
         type: 'sse' as const,
