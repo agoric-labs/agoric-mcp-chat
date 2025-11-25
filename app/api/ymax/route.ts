@@ -13,6 +13,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { spawn } from "child_process";
 import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-tool-schemas";
 import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
+import { validateInput } from '@/lib/guardrails';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -55,6 +56,25 @@ export async function POST(req: Request) {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  // Guardrails: Validate user input
+  const lastMessage = messages[messages.length - 1];
+  if (lastMessage?.content) {
+    const content = typeof lastMessage.content === 'string'
+      ? lastMessage.content
+      : JSON.stringify(lastMessage.content);
+
+    const validation = validateInput(content);
+    if (!validation.valid) {
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        {
+          status: validation.statusCode || 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
   }
 
   const id = chatId || nanoid();
