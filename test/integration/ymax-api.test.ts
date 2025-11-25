@@ -84,7 +84,8 @@ describe('Ymax API Integration Tests', () => {
         {
           messages: [createUserMessage('What are the supported protocols?')],
           selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId
+          userId: testUserId,
+          mcpServers: [SAMPLE_MCP_CONFIGS.YMAX_SSE]
         },
         { userId: testUserId }
       );
