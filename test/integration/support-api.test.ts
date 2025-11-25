@@ -643,7 +643,12 @@ describe('Support API Integration Tests', () => {
         /not (able|designed|intended) to/i,
         /outside (of )?(my|the) (scope|expertise|knowledge|support)/i,
         /focus(ed)? (exclusively )?(on|for) (Fast USDC|Agoric)/i,
-        /help (you )?with (Fast USDC|Agoric|support)/i
+        /help (you )?with (Fast USDC|Agoric|support)/i,
+        /(designed|built|specialized) (specifically |exclusively )?for Fast USDC/i,
+        /can only (assist|help) with Fast USDC/i,
+        /(exclusively|solely) for Fast USDC.*operations/i,
+        /specialize (exclusively )?in Fast USDC/i,
+        /no weather/i
       ];
 
       const containsRefusal = refusalPatterns.some(pattern => pattern.test(text));
