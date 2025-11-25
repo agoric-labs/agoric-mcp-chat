@@ -14,7 +14,6 @@ import {
   extractTextFromEvents
 } from '../utils/test-helpers';
 import {
-  API_ENDPOINTS,
   SAMPLE_MODELS,
   SAMPLE_MCP_CONFIGS,
   SAMPLE_MESSAGES,

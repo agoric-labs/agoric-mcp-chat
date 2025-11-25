@@ -18,7 +18,6 @@ import {
   API_ENDPOINTS,
   SAMPLE_MODELS,
   SAMPLE_MCP_CONFIGS,
-  SAMPLE_MESSAGES,
   TEST_TIMEOUTS
 } from '../utils/test-data';
 
