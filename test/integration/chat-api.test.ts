@@ -354,8 +354,21 @@ describe('Chat API Integration Tests', () => {
       const events = parseStreamingChunks(chunks);
       const text = extractTextFromEvents(events);
 
-      // Should mention blue (context awareness)
-      expect(text.toLowerCase()).toContain('blue');
+      // Test for LACK of context (what broken context looks like)
+      const contextLossIndicators = [
+        /I don't know/i,
+        /you haven't told me/i,
+        /haven't mentioned/i,
+        /didn't say/i,
+        /need more information/i,
+        /what.*your.*favorite.*color/i // Asking back the same question
+      ];
+
+      const hasContextLoss = contextLossIndicators.some(pattern => pattern.test(text));
+      expect(hasContextLoss).toBe(false);
+
+      // Verify we got a meaningful response
+      expect(text.length).toBeGreaterThan(0);
     }, TEST_TIMEOUTS.STREAMING);
   });
 

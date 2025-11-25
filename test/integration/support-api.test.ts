@@ -111,7 +111,8 @@ describe('Support API Integration Tests', () => {
 
       expect(response.status).toBe(200);
 
-      await expect(readStreamingResponse(response)).resolves.not.toThrow();
+      const chunks = await readStreamingResponse(response);
+      expect(chunks.length).toBeGreaterThan(0);
     }, TEST_TIMEOUTS.STREAMING);
   });
 
@@ -543,7 +544,10 @@ describe('Support API Integration Tests', () => {
         { userId: testUserId }
       );
 
-      expect([400, 500]).toContain(response.status);
+      expect(response.status).toBe(400);
+
+      const data = await response.json();
+      expect(data.error).toBeDefined();
     }, TEST_TIMEOUTS.MEDIUM);
 
     it('should handle missing selectedModel', async () => {
@@ -556,7 +560,10 @@ describe('Support API Integration Tests', () => {
         { userId: testUserId }
       );
 
-      expect([400, 500]).toContain(response.status);
+      expect(response.status).toBe(400);
+
+      const data = await response.json();
+      expect(data.error).toBeDefined();
     }, TEST_TIMEOUTS.MEDIUM);
   });
 
@@ -639,16 +646,29 @@ describe('Support API Integration Tests', () => {
 
       // 1. Should contain refusal language indicating scope limitation
       const refusalPatterns = [
+        // Direct refusal expressions
         /cannot|can't|unable to/i,
         /not (able|designed|intended) to/i,
         /outside (of )?(my|the) (scope|expertise|knowledge|support)/i,
+
+        // Role/design limitation expressions
+        /(specifically|exclusively) (designed|built|created|made) (to|for)/i,
+        /role is (specifically )?(limited|designed|restricted) to/i,
+        /designed (specifically |exclusively )?for Fast USDC/i,
+
+        // Scope limitation expressions
         /focus(ed)? (exclusively )?(on|for) (Fast USDC|Agoric)/i,
-        /help (you )?with (Fast USDC|Agoric|support)/i,
-        /(designed|built|specialized) (specifically |exclusively )?for Fast USDC/i,
-        /can only (assist|help) with Fast USDC/i,
-        /(exclusively|solely) for Fast USDC.*operations/i,
+        /can only (assist|help) with/i,
+        /(exclusively|solely) for Fast USDC/i,
         /specialize (exclusively )?in Fast USDC/i,
-        /no weather/i
+
+        // "Only" emphasis patterns
+        /Fast USDC.*only/i,
+        /only.*Fast USDC/i,
+
+        // Negative capability expressions
+        /no weather|not.*weather/i,
+        /can'?t (help|provide|assist) with (that|weather)/i
       ];
 
       const containsRefusal = refusalPatterns.some(pattern => pattern.test(text));

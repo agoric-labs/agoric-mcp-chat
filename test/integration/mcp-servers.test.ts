@@ -159,7 +159,7 @@ describe('MCP Server Integration Tests', () => {
       }
     });
 
-    it('should validate tool parameters match schema', async () => {
+    it('should have schemas with inputSchema defined for all tools', async () => {
       const toolNames = Object.keys(tools);
 
       for (const toolName of toolNames) {

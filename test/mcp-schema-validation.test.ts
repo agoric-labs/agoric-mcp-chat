@@ -10,7 +10,7 @@
  * - Prevent runtime errors from undefined tool schemas
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp';
 import { agoricMcpToolSchemas } from '@/lib/mcp/agoric-tool-schemas';
 import { agoricMcpDevopsToolSchemas } from '@/lib/mcp/agoric-devops-tool-schemas';
@@ -107,8 +107,8 @@ async function cleanupMcpClients() {
 
 describe('MCP Tool Schema Validation', () => {
   // Cleanup after all tests complete
-  beforeAll(async () => {
-    return () => cleanupMcpClients();
+  afterAll(async () => {
+    await cleanupMcpClients();
   });
 
   // Set timeout for all tests in this suite (60 seconds for network calls)
