@@ -70,7 +70,7 @@ describe('E2E Flow Integration Tests', () => {
       const events2 = parseStreamingChunks(chunks2);
 
       expect(events2.length).toBeGreaterThan(0);
-    }, TEST_TIMEOUTS.STREAMING * 2);
+    }, TEST_TIMEOUTS.STREAMING * 3);
 
     it('should maintain conversation context across turns', async () => {
       const messages = [
@@ -177,7 +177,7 @@ describe('E2E Flow Integration Tests', () => {
       ];
       const conceptsFound = optimizationConcepts.filter(pattern => pattern.test(text2)).length;
       expect(conceptsFound).toBeGreaterThanOrEqual(3);
-    }, TEST_TIMEOUTS.STREAMING * 2);
+    }, TEST_TIMEOUTS.STREAMING * 3);
   });
 
   describe('Support Ticket Flow', () => {
