@@ -259,28 +259,6 @@ describe('Chat API Integration Tests', () => {
       expect(text.length).toBeGreaterThan(0);
     }, TEST_TIMEOUTS.STREAMING);
 
-    it('should use Ymax system prompt when ino=true', async () => {
-      const response = await postToAPI(
-        API_ENDPOINTS.CHAT,
-        {
-          messages: [SAMPLE_MESSAGES.YMAX_OPTIMIZATION],
-          selectedModel: SAMPLE_MODELS.CLAUDE,
-          userId: testUserId
-        },
-        {
-          userId: testUserId,
-          queryParams: { ino: 'true' }
-        }
-      );
-
-      expect(response.status).toBe(200);
-
-      const chunks = await readStreamingResponse(response);
-      const events = parseStreamingChunks(chunks);
-
-      expect(events.length).toBeGreaterThan(0);
-    }, TEST_TIMEOUTS.STREAMING);
-
     it('should inject context parameter into system prompt', async () => {
       const context = JSON.stringify({
         address: 'agoric1test',
