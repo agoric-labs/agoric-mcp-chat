@@ -1,0 +1,134 @@
+name: Integration Smoke Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'package.json'
+
+jobs:
+  integration-eval:
+    runs-on: ubuntu-latest
+    
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      MCP_SERVER_URL: "http://localhost:8787" 
+      EVAL_MODEL: "claude-3-sonnet-20240229"
+
+    steps:
+      # 1. Checkout Self (The CHATBOT)
+      - name: Checkout Chatbot (Self)
+        uses: actions/checkout@v4
+        with:
+          path: chatbot
+
+      # 2. Checkout MCP Server (External Dependency)
+      - name: Checkout MCP Server
+        uses: actions/checkout@v4
+        with:
+          repository: agoric-labs/ymax-mcp-server
+          path: mcp-server
+          token: ${{ secrets.GH_PAT_TOKEN }}
+          ref: main 
+
+      # 3. Checkout Eval Framework
+      - name: Checkout Eval Framework
+        uses: actions/checkout@v4
+        with:
+          repository: agoric-labs/ai-evaluation-framework
+          path: eval-framework
+          token: ${{ secrets.GH_PAT_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # Install MCP Server Deps
+      - name: Install MCP Server
+        run: |
+          cd mcp-server
+          npm config set fetch-retries 5
+          npm config set fetch-retry-mintimeout 20000
+          npm config set fetch-retry-maxtimeout 120000
+          npm install --no-audit --no-fund
+
+      # Install Chatbot Deps
+      - name: Install Chatbot
+        run: |
+          cd chatbot
+          npm install
+
+      # Install Eval Framework Deps
+      - name: Install Eval Framework
+        run: |
+          cd eval-framework
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: Start Services and Run Smoke Test
+        run: |
+          # --- A. START MCP SERVER ---
+          echo "Starting MCP Server..."
+          cd mcp-server
+          npm run dev &
+          echo "Waiting for MCP Server (Port 8787)..."
+          npx wait-on tcp:8787 --timeout 30000
+          echo "MCP Server is UP"
+
+          # --- B. START CHATBOT ---
+          echo "Starting Chatbot..."
+          cd ../chatbot
+          export MCP_SERVER_URL="http://localhost:8787"
+          
+          # Start in background, FORCE bind to 0.0.0.0, and log output
+          npm run dev -- -H 0.0.0.0 > chatbot.log 2>&1 &
+          
+          echo "Waiting for Chatbot TCP (Port 3000)..."
+          npx wait-on tcp:3000 --timeout 60000
+          
+          echo "Verifying HTTP readiness..."
+          # Loop to ensure Next.js has finished compiling and returns 200 OK
+          for i in {1..30}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q "200"; then
+              echo "Chatbot is responding (HTTP 200)"
+              break
+            fi
+            echo "Waiting for HTTP 200... ($i/30)"
+            sleep 3
+          done
+
+          # Final check before handing over to Python
+          if ! curl -s http://localhost:3000 > /dev/null; then
+            echo " Chatbot failed to respond. Dumping Logs:"
+            cat chatbot.log
+            exit 1
+          fi
+
+          # --- C. RUN PYTHON EVAL ---
+          echo "Running Evaluation..."
+          cd ../eval-framework
+          
+          # Run the test. If it fails, we print the Chatbot logs to see why.
+          # NOTE: Using v4 because v5 was missing in your file list
+          python3 -m runner.run_offline \
+            --dataset evals/datasets/ymax_baseline.v4.jsonl \
+            --base-url http://localhost:3000 \
+            --limit 10 
+
+      - name: Upload Eval Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-report
+          path: eval-framework/artifacts/
