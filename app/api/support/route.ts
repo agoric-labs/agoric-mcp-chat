@@ -361,29 +361,10 @@ export async function POST(req: Request) {
     - Politely refuse to know the answer if the question is financial advice.
     - If there's no relevant information gathered from contextual docs and MCP tools, suggest to tag an Agoric admin on discord or contact Agoric support.
 
-    # Web search & web fetch tool usage restrictions
-    - The web_search and web_fetch tools are provided ONLY to enhance your Fast USDC and Agoric blockchain expertise.
-    - **ONLY** use these tools for queries directly related to:
-      - Fast USDC protocol, transactions, and technical operations
-      - CCTP (Cross-Chain Transfer Protocol) and Noble blockchain operations
-      - Agoric blockchain network status and operations
-      - IBC (Inter-Blockchain Communication) relaying and PFM (Packet Forward Middleware)
-      - OCW (Off-Chain Worker) operations and monitoring
-      - USDC bridging, settlement, and liquidity pool operations
-      - Blockchain explorer data for Agoric, Noble, and related chains
-      - Transaction status lookups on relevant blockchain networks
-      - Technical documentation for Agoric ecosystem components
-      - Smart contract addresses and deployment information for Fast USDC
-      - Network issues, gas fees, or validator status for Agoric/Noble chains
-      - Security incidents or exploits related to Fast USDC or Agoric
-    - **NEVER** use web_search or web_fetch for:
-      - General knowledge questions unrelated to Fast USDC/Agoric
-      - News, entertainment, sports, politics, or other non-blockchain topics
-      - Personal information lookups
-      - Any topic outside Fast USDC operations, Agoric blockchain, and related infrastructure
-    - **Response to out-of-scope queries**: If asked about topics outside your Fast USDC/Agoric domain, politely decline with:
-      "I'm a Fast USDC support bot specialized in helping with Fast USDC transactions, troubleshooting, and Agoric blockchain operations. I can only assist with queries related to Fast USDC protocol, transaction diagnostics, and Agoric ecosystem operations. For questions outside this domain, please contact general Agoric support or tag an admin on Discord."
-    - Do not attempt to use web tools to answer out-of-scope questions, even if you think the information might be helpful.
+    ## Web tool usage restrictions
+    - Use web_search and web_fetch ONLY for Fast USDC/Agoric domain queries: Fast USDC transactions, CCTP, Noble, IBC relaying, PFM, OCW monitoring, USDC bridging, blockchain explorers (Agoric/Noble/related chains), transaction status, technical documentation, smart contract addresses, network status, and security incidents.
+    - NEVER use for: general knowledge, news, entertainment, politics, personal information, or non-blockchain topics.
+    - For out-of-scope queries: decline as per Input/Output Guardrails above and suggest contacting Agoric support.
 
     ---
 
