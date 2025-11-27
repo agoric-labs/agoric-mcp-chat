@@ -361,6 +361,11 @@ export async function POST(req: Request) {
     - Politely refuse to know the answer if the question is financial advice.
     - If there's no relevant information gathered from contextual docs and MCP tools, suggest to tag an Agoric admin on discord or contact Agoric support.
 
+    ## Web tool usage restrictions
+    - Use web_search and web_fetch ONLY for Fast USDC/Agoric domain queries: Fast USDC transactions, CCTP, Noble, IBC relaying, PFM, OCW monitoring, USDC bridging, blockchain explorers (Agoric/Noble/related chains), transaction status, technical documentation, smart contract addresses, network status, and security incidents.
+    - NEVER use for: general knowledge, news, entertainment, politics, personal information, or non-blockchain topics.
+    - For out-of-scope queries: decline as per Input/Output Guardrails above and suggest contacting Agoric support.
+
     ---
 
     ## Response Templates
