@@ -14,4 +14,4 @@ jobs:
       server_ref: 'main'
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_PAT_TOKEN: ${{ secrets.GH_PAT_TOKEN }}
