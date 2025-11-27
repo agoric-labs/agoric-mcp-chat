@@ -67,8 +67,9 @@ export async function POST(req: Request) {
       .join('\n');
 
     const validation = validateInputLength(content);
+    
     if (!validation.valid) {
-      return new Response(JSON.stringify({ error: validation.error }), {
+      return new Response(validation.error, {
         status: validation.statusCode!,
         headers: { "Content-Type": "application/json" },
       });
