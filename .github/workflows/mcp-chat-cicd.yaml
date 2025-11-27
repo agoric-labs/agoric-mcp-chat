@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths: 
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'package.json'
+
+jobs:
+  smoke-test:
+    uses: agoric-labs/ai-evaluation-framework/.github/workflows/reusable-integration-test.yml@main
+    with:
+      chatbot_ref: ${{ github.sha }}
+      server_ref: 'main'
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GH_PAT_TOKEN: ${{ secrets.GH_PAT_TOKEN }}
