@@ -1,8 +1,14 @@
 /**
- * @property maxChars - Maximum characters to include in truncated output (default: 30,000)
- * @property bypassThreshold - Content smaller than this won't be truncated, even if > maxChars (default: 100,000)
- * @property sliceRatioHead - Ratio of maxChars to allocate to head section (default: 0.4)
- * @property sliceRatioMiddle - Ratio of maxChars to allocate to middle section (default: 0.2)
+ * truncation config - only used to prevent context window overflow
+ * in worst-case scenarios where tools return unexpectedly massive data.
+ *
+ * For DeFi operations, we want to preserve all meaningful context, so these
+ * thresholds are intentionally very high.
+ *
+ * @property maxChars - Maximum characters to include in truncated output (default: 150,000)
+ * @property bypassThreshold - Content smaller than this won't be truncated, even if > maxChars (default: 500,000)
+ * @property sliceRatioHead - Ratio of maxChars to allocate to head section (default: 0.5)
+ * @property sliceRatioMiddle - Ratio of maxChars to allocate to middle section (default: 0.1)
  * @property sliceRatioTail - Ratio of maxChars to allocate to tail section (default: 0.4)
  *
  */
@@ -14,12 +20,17 @@ export interface ToolResultConfig {
   sliceRatioTail?: number;
 }
 
+// truncation - only for worst-case scenarios that could break context window
+// Claude: 200k tokens ≈ 600k-800k chars for JSON
+// Reserve space for conversation + prompts + responses (~100k tokens)
+// Tool results should stay under ~100k tokens (≈300k chars) to be safe
+// These thresholds only activate for unexpectedly massive tool responses
 const DEFAULT_CONFIG: Required<ToolResultConfig> = {
-  maxChars: 30_000,
-  bypassThreshold: 100_000,
-  sliceRatioHead: 0.4,
-  sliceRatioMiddle: 0.2,
-  sliceRatioTail: 0.4,
+  maxChars: 200_000, // Truncate to this size if content exceeds threshold (~65k tokens)
+  bypassThreshold: 300_000, // Only activate truncation for responses > 300k chars (~100k tokens)
+  sliceRatioHead: 0.5, // Prioritize beginning (schema, initial data)
+  sliceRatioMiddle: 0.1, // Small middle sample for pattern detection
+  sliceRatioTail: 0.4, // End often has summary/totals
 };
 
 /**
@@ -157,14 +168,13 @@ function truncateJSON(
 
 /**
  * Truncation behavior:
- * 1. If no config provided, returns result as-is
- * 2. If content ≤ maxChars, returns as-is
- * 3. If content < bypassThreshold, returns as-is (avoids truncating moderate-sized content)
- * 4. If content ≥ bypassThreshold, applies head/middle/tail truncation
- *
+ * 1. Always applies DEFAULT_CONFIG for worst case scenario truncation protection
+ * 2. If content < bypassThreshold, returns as-is (avoids truncating normal data)
+ * 3. If content ≥ bypassThreshold, applies head/middle/tail truncation to maxChars
+ * 4. Per-tool configs in YMAX_TOOL_CONFIGS can override defaults for specific tools
  * @param toolName - Name of the tool (for logging and metadata)
  * @param result - The tool's raw result (string or object)
- * @param config - Optional truncation configuration
+ * @param config - Optional truncation configuration (overrides defaults)
  * @returns Processed result as a string
  */
 export function processToolResult(
@@ -172,13 +182,10 @@ export function processToolResult(
   result: unknown,
   config?: ToolResultConfig,
 ): string {
-  if (!config) {
-    return typeof result === 'string' ? result : JSON.stringify(result);
-  }
-
+  // If a specific config is provided, it overrides the defaults
   const cfg: Required<ToolResultConfig> = {
     ...DEFAULT_CONFIG,
-    ...config,
+    ...(config || {}),
   };
 
   const content: string =
@@ -204,12 +211,11 @@ export function processToolResult(
 }
 
 /**
- * Add tool names here to apply custom truncation rules.
+ * Per-tool truncation overrides.
+ * Left empty by default - let tools return full data unless it's truly massive.
  */
 export const YMAX_TOOL_CONFIGS: Record<string, ToolResultConfig> = {
-  'ymax-get-all-instruments': { maxChars: 30_000 },
-  'ymax-get-instrument': { maxChars: 30_000 },
-  'mintscan-get-address-transactions': { maxChars: 30_000 },
+  // Example: 'some-tool-that-returns-millions-of-rows': { maxChars: 100_000, bypassThreshold: 200_000 },
 };
 
 /**
