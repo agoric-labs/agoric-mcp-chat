@@ -13,7 +13,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "test:mcp": "vitest run test/mcp-schema-validation"
+    "test:mcp": "vitest run test/mcp-schema-coverage"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.0",
