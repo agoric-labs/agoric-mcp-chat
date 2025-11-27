@@ -10,11 +10,11 @@
  * - Prevent runtime errors from undefined tool schemas
  */
 
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { agoricMcpToolSchemas } from '@/lib/mcp/agoric-tool-schemas';
 import { agoricMcpDevopsToolSchemas } from '@/lib/mcp/agoric-devops-tool-schemas';
 import { ymaxMcptoolSchemas } from '@/lib/mcp/ymax-tool-schemas';
-import { fetchMcpServerTools, cleanupMcpClients, type ServerConfig, type CachedClient } from './test-helpers';
+import { fetchMcpServerTools, type ServerConfig } from './test-helpers';
 
 const MCP_SERVERS: Record<string, ServerConfig> = {
     agoric: {
@@ -37,19 +37,13 @@ const MCP_SERVERS: Record<string, ServerConfig> = {
     },
 };
 
-const mcpClientCache: Record<string, CachedClient> = {};
-
 const TEST_TIMEOUT = 60_000;
 
 describe('MCP Server Schema Coverage', () => {
-    afterAll(async () => {
-        await cleanupMcpClients(mcpClientCache, MCP_SERVERS);
-    });
-
     Object.entries(MCP_SERVERS).forEach(([serverKey, serverConfig]) => {
         describe(serverConfig.name, () => {
             it('should have matching schemas for all MCP server tools', { timeout: TEST_TIMEOUT }, async () => {
-                const serverTools = await fetchMcpServerTools(serverKey, serverConfig, mcpClientCache);
+                const serverTools = await fetchMcpServerTools(serverKey, serverConfig);
                 const definedSchemas = Object.keys(serverConfig.schemas);
 
                 console.log(`\n ${serverConfig.name} Validation:`);
