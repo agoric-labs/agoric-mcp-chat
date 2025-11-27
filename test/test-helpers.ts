@@ -8,7 +8,6 @@ export interface ServerConfig {
     name: string;
     url: string;
     schemas: Record<string, ToolSchema>;
-    schemaFile: string;
 }
 
 export async function fetchMcpServerTools(

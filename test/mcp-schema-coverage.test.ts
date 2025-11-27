@@ -6,7 +6,6 @@
  *
  * Purpose:
  * - Ensure schema definitions stay synchronized with MCP server implementations
- * - Catch missing schemas when MCP servers add/modify tools
  * - Prevent runtime errors from undefined tool schemas
  */
 
@@ -21,19 +20,16 @@ const MCP_SERVERS: Record<string, ServerConfig> = {
         name: 'Agoric MCP Server',
         url: 'https://agoric-mcp-server.agoric-core.workers.dev/sse',
         schemas: agoricMcpToolSchemas,
-        schemaFile: 'lib/mcp/agoric-tool-schemas.ts',
     },
     ymax: {
         name: 'Ymax MCP Server',
         url: 'https://ymax-mcp-server.agoric-core.workers.dev/sse',
         schemas: ymaxMcptoolSchemas,
-        schemaFile: 'lib/mcp/ymax-tool-schemas.ts',
     },
     devops: {
         name: 'Agoric DevOps MCP Server',
         url: 'https://agoric-mcp-devops-server.agoric-core.workers.dev/sse',
         schemas: agoricMcpDevopsToolSchemas,
-        schemaFile: 'lib/mcp/agoric-devops-tool-schemas.ts',
     },
 };
 
@@ -53,7 +49,7 @@ describe('MCP Server Schema Coverage', () => {
 
             expect(
                 definedSchemas.length,
-                `Schema count mismatch in ${serverConfig.schemaFile}: expected ${serverTools.length} but got ${definedSchemas.length}`
+                `Schema count mismatch for ${serverConfig.name}: expected ${serverTools.length} but got ${definedSchemas.length}`
             ).toBe(serverTools.length);
 
             const missingSchemas = serverTools.filter(
@@ -67,7 +63,7 @@ describe('MCP Server Schema Coverage', () => {
 
             expect(
                 missingSchemas,
-                `Missing schemas in ${serverConfig.schemaFile} for tools: ${missingSchemas.join(', ')}`
+                `Missing schemas in ${serverConfig.name} for tools: ${missingSchemas.join(', ')}`
             ).toHaveLength(0);
         }
     );
