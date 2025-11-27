@@ -43,23 +43,13 @@ describe('MCP Server Schema Coverage', () => {
             const serverTools = await fetchMcpServerTools(serverKey, serverConfig);
             const definedSchemas = Object.keys(serverConfig.schemas);
 
-            console.log(`\n ${serverConfig.name} Validation:`);
-            console.log(`   Server tools: ${serverTools.length}`);
-            console.log(`   Defined schemas: ${definedSchemas.length}`);
-
             expect(
-                definedSchemas.length,
-                `Schema count mismatch for ${serverConfig.name}: expected ${serverTools.length} but got ${definedSchemas.length}`
+                definedSchemas.length
             ).toBe(serverTools.length);
 
             const missingSchemas = serverTools.filter(
                 (tool) => !definedSchemas.includes(tool)
             );
-
-            if (missingSchemas.length > 0) {
-                console.error('\n Missing schemas for tools:');
-                missingSchemas.forEach((tool) => console.error(`   - ${tool}`));
-            }
 
             expect(
                 missingSchemas,
