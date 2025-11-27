@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   if (lastMessage?.parts) {
     const content = lastMessage.parts
       .filter(part => part.type === 'text')
-      .map(part => part.type === 'text' ? part.text : '')
+      .map(part => part.text)
       .join('\n');
 
     const validation = validateInputLength(content);
