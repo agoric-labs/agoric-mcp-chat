@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    paths: ['app/**', 'components/**', 'lib/**', 'package.json']
+    branches: [main]
+    paths: 
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'package.json'
 
 jobs:
   smoke-test:
