@@ -1,15 +1,30 @@
 import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp';
 
-interface ServerConfig {
+interface ToolSchema {
+    inputSchema: unknown;
+}
+
+interface MCPClient {
+    tools: () => Promise<Record<string, unknown>>;
+    close?: () => Promise<void>;
+}
+
+export interface ServerConfig {
     name: string;
     url: string;
-    schemas: Record<string, any>;
+    schemas: Record<string, ToolSchema>;
+    schemaFile: string;
+}
+
+export interface CachedClient {
+    client: MCPClient;
+    tools: string[];
 }
 
 export async function fetchMcpServerTools(
     serverKey: string,
     serverConfig: ServerConfig,
-    cache: Record<string, { client: any; tools: string[] }>
+    cache: Record<string, CachedClient>
 ): Promise<string[]> {
     if (cache[serverKey]) {
         return cache[serverKey].tools;
@@ -40,16 +55,17 @@ export async function fetchMcpServerTools(
 }
 
 export async function cleanupMcpClients(
-    cache: Record<string, { client: any; tools: string[] }>,
+    cache: Record<string, CachedClient>,
     mcpServers: Record<string, ServerConfig>
-) {
+): Promise<void> {
     for (const [key, cached] of Object.entries(cache)) {
         try {
-            if (cached.client && typeof cached.client.close === 'function') {
+            if (cached.client?.close) {
                 await cached.client.close();
             }
         } catch (error) {
-            console.warn(`Error closing ${key} client:`, error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(`Error closing ${key} client: ${errorMessage}`);
         }
     }
 }

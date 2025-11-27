@@ -14,9 +14,9 @@ import { describe, it, expect, afterAll } from 'vitest';
 import { agoricMcpToolSchemas } from '@/lib/mcp/agoric-tool-schemas';
 import { agoricMcpDevopsToolSchemas } from '@/lib/mcp/agoric-devops-tool-schemas';
 import { ymaxMcptoolSchemas } from '@/lib/mcp/ymax-tool-schemas';
-import { fetchMcpServerTools, cleanupMcpClients } from './test-helpers';
+import { fetchMcpServerTools, cleanupMcpClients, type ServerConfig, type CachedClient } from './test-helpers';
 
-const MCP_SERVERS = {
+const MCP_SERVERS: Record<string, ServerConfig> = {
     agoric: {
         name: 'Agoric MCP Server',
         url: 'https://agoric-mcp-server.agoric-core.workers.dev/sse',
@@ -37,9 +37,9 @@ const MCP_SERVERS = {
     },
 };
 
-const mcpClientCache: Record<string, { client: any; tools: string[] }> = {};
+const mcpClientCache: Record<string, CachedClient> = {};
 
-const TEST_TIMEOUT = 60000;
+const TEST_TIMEOUT = 60_000;
 
 describe('MCP Server Schema Coverage', () => {
     afterAll(async () => {
