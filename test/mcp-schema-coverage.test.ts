@@ -40,35 +40,35 @@ const MCP_SERVERS: Record<string, ServerConfig> = {
 const TEST_TIMEOUT = 60_000;
 
 describe('MCP Server Schema Coverage', () => {
-    Object.entries(MCP_SERVERS).forEach(([serverKey, serverConfig]) => {
-        describe(serverConfig.name, () => {
-            it('should have matching schemas for all MCP server tools', { timeout: TEST_TIMEOUT }, async () => {
-                const serverTools = await fetchMcpServerTools(serverKey, serverConfig);
-                const definedSchemas = Object.keys(serverConfig.schemas);
+    it.each(Object.entries(MCP_SERVERS))(
+        '%s - should have matching schemas for all MCP server tools',
+        { timeout: TEST_TIMEOUT },
+        async (serverKey, serverConfig) => {
+            const serverTools = await fetchMcpServerTools(serverKey, serverConfig);
+            const definedSchemas = Object.keys(serverConfig.schemas);
 
-                console.log(`\n ${serverConfig.name} Validation:`);
-                console.log(`   Server tools: ${serverTools.length}`);
-                console.log(`   Defined schemas: ${definedSchemas.length}`);
+            console.log(`\n ${serverConfig.name} Validation:`);
+            console.log(`   Server tools: ${serverTools.length}`);
+            console.log(`   Defined schemas: ${definedSchemas.length}`);
 
-                expect(
-                    definedSchemas.length,
-                    `Schema count mismatch in ${serverConfig.schemaFile}: expected ${serverTools.length} but got ${definedSchemas.length}`
-                ).toBe(serverTools.length);
+            expect(
+                definedSchemas.length,
+                `Schema count mismatch in ${serverConfig.schemaFile}: expected ${serverTools.length} but got ${definedSchemas.length}`
+            ).toBe(serverTools.length);
 
-                const missingSchemas = serverTools.filter(
-                    (tool) => !definedSchemas.includes(tool)
-                );
+            const missingSchemas = serverTools.filter(
+                (tool) => !definedSchemas.includes(tool)
+            );
 
-                if (missingSchemas.length > 0) {
-                    console.error('\n Missing schemas for tools:');
-                    missingSchemas.forEach((tool) => console.error(`   - ${tool}`));
-                }
+            if (missingSchemas.length > 0) {
+                console.error('\n Missing schemas for tools:');
+                missingSchemas.forEach((tool) => console.error(`   - ${tool}`));
+            }
 
-                expect(
-                    missingSchemas,
-                    `Missing schemas in ${serverConfig.schemaFile} for tools: ${missingSchemas.join(', ')}`
-                ).toHaveLength(0);
-            });
-        });
-    });
+            expect(
+                missingSchemas,
+                `Missing schemas in ${serverConfig.schemaFile} for tools: ${missingSchemas.join(', ')}`
+            ).toHaveLength(0);
+        }
+    );
 });
