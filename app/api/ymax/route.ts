@@ -12,6 +12,8 @@ import {
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { spawn } from "child_process";
 import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-tool-schemas";
+import { manageContext } from '@/lib/context-manager';
+import { wrapToolExecution } from '@/lib/tool-result-manager';
 import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
 import { validateInputLength } from '@/lib/guardrails';
 
@@ -247,8 +249,21 @@ export async function POST(req: Request) {
         Object.keys(mcptools),
       );
 
-      // Add MCP tools to tools object
-      tools = { ...tools, ...mcptools };
+      const wrappedTools: Record<string, any> = {};
+      for (const [toolName, tool] of Object.entries(mcptools)) {
+        const originalTool = tool as any;
+
+        wrappedTools[toolName] = {
+          ...originalTool,
+          execute: wrapToolExecution(
+            toolName,
+            async (args: any, options: any) =>
+              originalTool.execute(args, options),
+          ),
+        };
+      }
+
+      tools = { ...tools, ...wrappedTools };
     } catch (error) {
       console.error("Failed to initialize MCP client:", error);
       console.error("MCP Server config:", mcpServer);
@@ -274,11 +289,11 @@ export async function POST(req: Request) {
     tools = addAnthropicWebTools(tools);
   }
 
-  console.log("messages", messages);
-  console.log(
-    "parts",
-    messages.map((m) => m.parts.map((p) => p)),
-  );
+  // console.log("messages", messages);
+  // console.log(
+  //   "parts",
+  //   messages.map((m) => m.parts.map((p) => p)),
+  // );
 
   // Use the Max AI system prompt
   const systemPrompt = `You are **Max AI**, a DeFi chat assistant running behind the Ymax DeFi product. Ymax is an intelligent DeFi command center allowing individuals to build and edit a portfolio of DeFi positions across multiple protocols and networks, which can be executed with a single signature.  Your job is to retrieve, analyze, and explain user- and asset-related information via tools. Do not invent data; if data is missing or ambiguous, state that clearly and say what you can and cannot determine from Ymax.
@@ -428,11 +443,38 @@ export async function POST(req: Request) {
     }
   }
 
+  const coreMessages = convertToModelMessages(messages);
+
+  const contextResult = await manageContext(coreMessages, {
+    maxTokens: 70_000,
+    keepRecentMessages: 8,
+    debug: false,
+    systemPrompt: finalSystemPrompt,
+  });
+
+  if (contextResult.wasSummarized) {
+    console.log(
+      `[Context Manager] Applied ${contextResult.method}: ` +
+        `${contextResult.originalTokens} → ${contextResult.newTokens} tokens ` +
+        `(saved ${contextResult.tokensSaved})`,
+    );
+
+    const maxTokens = 70_000;
+    const utilizationPercent = Math.round(
+      (contextResult.newTokens / maxTokens) * 100,
+    );
+    if (contextResult.newTokens > maxTokens * 0.9) {
+      console.warn(
+        `[WARN] Context still at ${utilizationPercent}% after ${contextResult.method}.`,
+      );
+    }
+  }
+
   // If there was an error setting up MCP clients but we at least have composio tools, continue
   const result = streamText({
     model: model.languageModel(selectedModel),
     system: finalSystemPrompt,
-    messages: convertToModelMessages(messages),
+    messages: contextResult.messages,
     tools,
     stopWhen: stepCountIs(20),
     providerOptions: {
@@ -451,7 +493,7 @@ export async function POST(req: Request) {
     onError: (error) => {
       console.error(JSON.stringify(error, null, 2));
     },
-    async onFinish({ response }) {
+    async onFinish({ usage, finishReason }) {
       // In v5, response.messages already contains all formatted messages
       // await saveChat({
       //   id,
@@ -465,6 +507,20 @@ export async function POST(req: Request) {
       // for (const client of mcpClients) {
       //   await client.close();
       // }
+
+      console.log('[Stream Finished]', {
+        finishReason,
+        promptTokens: usage?.inputTokens,
+        completionTokens: usage?.outputTokens,
+        totalTokens: usage?.totalTokens,
+      });
+
+      if (usage?.totalTokens && usage.totalTokens > 80_000) {
+        console.warn(
+          `[High Token Usage] ${usage.totalTokens.toLocaleString()} tokens used. ` +
+            `Close to context limits.`,
+        );
+      }
     },
   });
 
