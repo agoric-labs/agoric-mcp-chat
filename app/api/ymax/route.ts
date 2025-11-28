@@ -13,6 +13,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { spawn } from "child_process";
 import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-tool-schemas";
 import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
+import { validateInputLength } from '@/lib/guardrails';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -55,6 +56,24 @@ export async function POST(req: Request) {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  // Guardrail: Validate user input length
+  const lastMessage = messages[messages.length - 1];
+  if (lastMessage?.parts) {
+    const content = lastMessage.parts
+      .filter(part => part.type === 'text')
+      .map(part => part.text)
+      .join('\n');
+
+    const validation = validateInputLength(content);
+    
+    if (!validation.valid) {
+      return new Response(validation.error, {
+        status: validation.statusCode!,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
   }
 
   const id = chatId || nanoid();
@@ -377,6 +396,13 @@ export async function POST(req: Request) {
   (2) Never fabricate support channels or contact methods
   (3) Default to Discord for any uncertainty or time-sensitive matters
 
+  # Critical guardrails
+  1. **Data integrity**: Every numerical value, address, or hash MUST come from tool responses. If tool data is incomplete or unavailable, state "Data not available" explicitly—never estimate or assume.
+  2. **Financial boundaries**: Provide information and education only. Present options with trade-offs, never directives like "you should buy/sell."
+  3. **Security**: Never request, discuss, or reference private keys, seed phrases, or mnemonics under any circumstances.
+  4. **Transparency**: Cite which tool provided data. Acknowledge staleness, gaps, or uncertainties in tool responses.
+  5. **Risk awareness**: When discussing yields or protocols, mention inherent DeFi risks (smart contract risk, volatility, impermanent loss).
+  
   # Web tool usage restrictions
   - Use web_search and web_fetch ONLY for DeFi/blockchain domain queries: DeFi protocols, yield farming, blockchain networks, bridges (CCTP, Axelar, IBC), crypto prices, market data, protocol documentation, smart contract addresses, blockchain explorers, APY/TVL data, transaction status, gas fees, network conditions, and security audits.
   - NEVER use for: general knowledge, news, entertainment, politics, personal information, or non-DeFi topics.

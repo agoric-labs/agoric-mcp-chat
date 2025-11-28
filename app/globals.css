@@ -510,3 +510,9 @@
     background: linear-gradient(135deg, oklch(0.12 0.04 195.00), oklch(0.08 0.06 185.00));
   }
 }
+
+/* Fix error toast visibility in ymax theme */
+.ymax [data-sonner-toast][data-type="error"] {
+  background-color: oklch(0.40 0.18 25.00) !important;
+  color: oklch(0.98 0.01 200.00) !important;
+}
