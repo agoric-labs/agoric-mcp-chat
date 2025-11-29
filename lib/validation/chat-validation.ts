@@ -24,6 +24,12 @@
 
 import { MODELS } from '@/ai/providers';
 
+export const EXPECTED_MCP_SERVERS = {
+  CHAT: 'https://agoric-mcp-server.agoric-core.workers.dev/sse',
+  YMAX: 'https://ymax-mcp-server.agoric-core.workers.dev/sse',
+  SUPPORT: 'https://agoric-mcp-devops-server.agoric-core.workers.dev/sse'
+} as const;
+
 export interface ValidationError {
   error: string;
   status: 400 | 401 | 403 | 422;
@@ -149,6 +155,33 @@ export function validateMessageStructure(body: ChatRequestBody): ValidationError
         status: 400
       };
     }
+  }
+
+  return null;
+}
+
+export function validateMcpServer(
+  body: ChatRequestBody,
+  expectedServerUrl: string
+): ValidationError | null {
+  const mcpServers = body.mcpServers || [];
+
+  if (mcpServers.length === 0) {
+    return {
+      error: `MCP server is required. Expected server: ${expectedServerUrl}`,
+      status: 400
+    };
+  }
+
+  const hasExpectedServer = mcpServers.some(
+    (server: any) => server.url === expectedServerUrl
+  );
+
+  if (!hasExpectedServer) {
+    return {
+      error: `Invalid MCP server. Expected: ${expectedServerUrl}`,
+      status: 400
+    };
   }
 
   return null;

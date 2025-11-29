@@ -19,6 +19,8 @@ import {
   validateMessages,
   validateSelectedModel,
   validateMessageStructure,
+  validateMcpServer,
+  EXPECTED_MCP_SERVERS,
   type ChatRequestBody
 } from '@/lib/validation/chat-validation';
 
@@ -76,6 +78,14 @@ export async function POST(req: Request) {
     return new Response(
       JSON.stringify({ error: messageStructureError.error }),
       { status: messageStructureError.status, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const mcpServerError = validateMcpServer(body, EXPECTED_MCP_SERVERS.YMAX);
+  if (mcpServerError) {
+    return new Response(
+      JSON.stringify({ error: mcpServerError.error }),
+      { status: mcpServerError.status, headers: { "Content-Type": "application/json" } }
     );
   }
 
