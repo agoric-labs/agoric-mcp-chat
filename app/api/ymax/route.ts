@@ -14,6 +14,13 @@ import { spawn } from "child_process";
 import { ymaxMcptoolSchemas } from "@/lib/mcp/ymax-tool-schemas";
 import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
 import { validateInputLength } from '@/lib/guardrails';
+import {
+  validateUserId,
+  validateMessages,
+  validateSelectedModel,
+  validateMessageStructure,
+  type ChatRequestBody
+} from '@/lib/validation/chat-validation';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -37,26 +44,54 @@ export async function POST(req: Request) {
   const url = new URL(req.url);
   const contextParam = url.searchParams.get("context");
 
+  const body = await req.json() as ChatRequestBody;
+
+  // Validate request using individual validators
+  const userIdError = validateUserId(body);
+  if (userIdError) {
+    return new Response(
+      JSON.stringify({ error: userIdError.error }),
+      { status: userIdError.status, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const messagesError = validateMessages(body);
+  if (messagesError) {
+    return new Response(
+      JSON.stringify({ error: messagesError.error }),
+      { status: messagesError.status, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const selectedModelError = validateSelectedModel(body);
+  if (selectedModelError) {
+    return new Response(
+      JSON.stringify({ error: selectedModelError.error }),
+      { status: selectedModelError.status, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const messageStructureError = validateMessageStructure(body);
+  if (messageStructureError) {
+    return new Response(
+      JSON.stringify({ error: messageStructureError.error }),
+      { status: messageStructureError.status, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const {
     messages,
     chatId,
     selectedModel,
     userId,
     mcpServers = [],
-  }: {
+  } = body as {
     messages: UIMessage[];
     chatId?: string;
     selectedModel: modelID;
     userId: string;
     mcpServers?: MCPServerConfig[];
-  } = await req.json();
-
-  if (!userId) {
-    return new Response(JSON.stringify({ error: "User ID is required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  };
 
   // Guardrail: Validate user input length
   const lastMessage = messages[messages.length - 1];
@@ -67,7 +102,7 @@ export async function POST(req: Request) {
       .join('\n');
 
     const validation = validateInputLength(content);
-    
+
     if (!validation.valid) {
       return new Response(validation.error, {
         status: validation.statusCode!,
