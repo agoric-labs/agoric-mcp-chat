@@ -110,7 +110,7 @@ export function MCPProvider(props: { children: React.ReactNode }) {
       }));
 
     setMcpServersForApi(processedServers);
-  }, [mcpServers, selectedMcpServers]);
+  }, [_mcpServers, _selectedMcpServers, mcpServers, selectedMcpServers]);
 
   return (
     <MCPContext.Provider

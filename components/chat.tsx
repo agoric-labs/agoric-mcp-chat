@@ -3,7 +3,7 @@
 import { defaultModel, type modelID } from "@/ai/providers";
 import { UIMessage, useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
 import { Messages } from "./messages";
@@ -50,6 +50,14 @@ function ChatContent() {
 
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
+
+  // Use a ref to always have the latest mcpServersForApi value in the closure
+  const mcpServersForApiRef = useRef(mcpServersForApi);
+
+  // Update ref whenever mcpServersForApi changes
+  useEffect(() => {
+    mcpServersForApiRef.current = mcpServersForApi;
+  }, [mcpServersForApi]);
 
   // Get the editor context
   const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } =
@@ -113,11 +121,12 @@ function ChatContent() {
     transport: new DefaultChatTransport({
       api: apiUrl,
       prepareSendMessagesRequest({ messages }) {
+        // Use ref.current to get the latest value, not the closure-captured value
         return {
           body: {
             messages,
             selectedModel,
-            mcpServers: mcpServersForApi,
+            mcpServers: mcpServersForApiRef.current,
             chatId: chatId || generatedChatId,
             userId,
           },
