@@ -1,5 +1,6 @@
 import { generateText, type ModelMessage } from 'ai';
 import { model } from '@/ai/providers';
+import { TOKEN_CONFIG } from './token-config';
 
 export function estimateTokens(content: string | ModelMessage[]): number {
   if (typeof content === 'string') return Math.ceil(content.length / 3.5);
@@ -30,8 +31,8 @@ export interface ContextManagerConfig {
 export const DEFAULT_CONTEXT_CONFIG: Required<
   Omit<ContextManagerConfig, 'contextEditConfig' | 'systemPrompt'>
 > = {
-  maxTokens: 100_000, // Maximum tokens before triggering summarization
-  keepRecentMessages: 10,
+  maxTokens: TOKEN_CONFIG.MAX_CONTEXT_TOKENS,
+  keepRecentMessages: TOKEN_CONFIG.KEEP_RECENT_MESSAGES,
   debug: false,
 };
 
@@ -73,7 +74,7 @@ async function summarizeWithDirectAPI(
   const result = await generateText({
     model: model.languageModel('claude-4-5-sonnet'),
     temperature: 0.3,
-    maxOutputTokens: 2000,
+    maxOutputTokens: TOKEN_CONFIG.SUMMARY_MAX_OUTPUT_TOKENS,
     system: `You are summarizing a conversation about DeFi portfolio optimization and Agoric blockchain operations.
 
 Create a structured, information-dense summary that preserves critical context for continuing the conversation:

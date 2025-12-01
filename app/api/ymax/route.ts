@@ -16,6 +16,7 @@ import { manageContext } from '@/lib/context-manager';
 import { wrapToolExecution } from '@/lib/tool-result-manager';
 import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
 import { validateInputLength } from '@/lib/guardrails';
+import { TOKEN_CONFIG, shouldWarnContextUsage, getContextUtilization, isHighTokenUsage } from '@/lib/token-config';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -446,8 +447,8 @@ export async function POST(req: Request) {
   const coreMessages = convertToModelMessages(messages);
 
   const contextResult = await manageContext(coreMessages, {
-    maxTokens: 70_000,
-    keepRecentMessages: 8,
+    maxTokens: TOKEN_CONFIG.MAX_CONTEXT_TOKENS,
+    keepRecentMessages: TOKEN_CONFIG.KEEP_RECENT_MESSAGES,
     debug: false,
     systemPrompt: finalSystemPrompt,
   });
@@ -459,11 +460,8 @@ export async function POST(req: Request) {
         `(saved ${contextResult.tokensSaved})`,
     );
 
-    const maxTokens = 70_000;
-    const utilizationPercent = Math.round(
-      (contextResult.newTokens / maxTokens) * 100,
-    );
-    if (contextResult.newTokens > maxTokens * 0.9) {
+    const utilizationPercent = getContextUtilization(contextResult.newTokens);
+    if (shouldWarnContextUsage(contextResult.newTokens)) {
       console.warn(
         `[WARN] Context still at ${utilizationPercent}% after ${contextResult.method}.`,
       );
@@ -515,7 +513,7 @@ export async function POST(req: Request) {
         totalTokens: usage?.totalTokens,
       });
 
-      if (usage?.totalTokens && usage.totalTokens > 80_000) {
+      if (usage?.totalTokens && isHighTokenUsage(usage.totalTokens)) {
         console.warn(
           `[High Token Usage] ${usage.totalTokens.toLocaleString()} tokens used. ` +
             `Close to context limits.`,
