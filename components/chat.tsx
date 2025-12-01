@@ -20,6 +20,8 @@ import { useMCP } from "@/lib/context/mcp-context";
 // import VerticalTextCarousel from "@/components/ui/carousel";
 import { EditorProvider, useEditor } from "@/lib/context/editor-context";
 import { FloatingEditor } from "./floating-editor";
+import { useTokenCounter } from "@/lib/hooks/use-token-counter";
+import { ContextWarningBanner } from "./context-warning-banner";
 
 // Type for chat data from DB
 interface ChatData {
@@ -144,6 +146,10 @@ function ChatContent() {
 
   // Define loading state early so it can be used in effects
   const isLoading = status === "streaming" || status === "submitted";
+
+  // Track token usage
+  const tokenCounter = useTokenCounter(messages, selectedModel);
+  const isContextFull = tokenCounter.warningLevel === 'critical';
 
   // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback(
@@ -277,6 +283,9 @@ function ChatContent() {
               status={status}
               stop={stop}
               autoFocus={!disableAutoFocus}
+              messages={messages}
+              tokenCounter={tokenCounter}
+              isContextFull={isContextFull}
             />
           </form>
           {/* Only show carousel when no messages exist */}
@@ -291,21 +300,31 @@ function ChatContent() {
               status={status}
             />
           </div>
-          <form
-            onSubmit={handleFormSubmit}
-            className="mt-2 w-full mx-auto mb-2 xs:mb-4 sm:mb-auto px-2 xs:px-0"
-          >
-            <Textarea
-              selectedModel={selectedModel}
-              setSelectedModel={setSelectedModel}
-              handleInputChange={handleInputChange}
-              input={input}
-              isLoading={isLoading}
-              status={status}
-              stop={stop}
-              autoFocus={!disableAutoFocus}
+          <div className="w-full mx-auto px-2 xs:px-0">
+            {/* Context Warning Banner */}
+            <ContextWarningBanner
+              warningLevel={tokenCounter.warningLevel}
+              usagePercent={tokenCounter.usagePercent}
             />
-          </form>
+            <form
+              onSubmit={handleFormSubmit}
+              className="mt-2 mb-2 xs:mb-4 sm:mb-auto"
+            >
+              <Textarea
+                selectedModel={selectedModel}
+                setSelectedModel={setSelectedModel}
+                handleInputChange={handleInputChange}
+                input={input}
+                isLoading={isLoading}
+                status={status}
+                stop={stop}
+                autoFocus={!disableAutoFocus}
+                messages={messages}
+                tokenCounter={tokenCounter}
+                isContextFull={isContextFull}
+              />
+            </form>
+          </div>
         </>
       )}
 
