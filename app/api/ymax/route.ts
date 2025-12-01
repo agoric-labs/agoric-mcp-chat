@@ -48,7 +48,6 @@ export async function POST(req: Request) {
 
   const body = await req.json() as ChatRequestBody;
 
-  // Validate request using individual validators
   const userIdError = validateUserId(body);
   if (userIdError) {
     return new Response(
