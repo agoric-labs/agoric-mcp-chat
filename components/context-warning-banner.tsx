@@ -1,8 +1,13 @@
 "use client";
 
-import { AlertTriangle, MessageSquarePlus, X } from "lucide-react";
+import { AlertTriangle, MessageSquarePlus, X, Info } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ContextWarningBannerProps {
   warningLevel: 'safe' | 'info' | 'warning' | 'critical';
@@ -66,7 +71,7 @@ export function ContextWarningBanner({
       case 'warning':
         return 'Context usage is high. Starting a new chat is recommended.';
       case 'critical':
-        return 'Context nearly full. Please start a new chat to continue effectively.';
+        return 'Context nearly full. Please start a new chat to continue.';
       default:
         return '';
     }
@@ -85,9 +90,42 @@ export function ContextWarningBanner({
         <p className={`text-sm ${styles.text} font-medium mb-2`}>
           {message}
         </p>
-        <p className={`text-xs ${styles.text} opacity-80 mb-3`}>
-          Current usage: {usagePercent}%
-        </p>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex-1 max-w-xs">
+            <div className="flex items-center justify-between text-xs mb-1">
+              <div className="flex items-center gap-1">
+                <span className={`${styles.text} opacity-80 font-medium`}>
+                  Context usage
+                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className={`h-3 w-3 ${styles.icon} opacity-60 cursor-help`} />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p className="text-xs">
+                      The model has a limited context window. Start a new chat to continue.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <span className={`${styles.text} font-semibold tabular-nums`}>
+                {usagePercent}%
+              </span>
+            </div>
+            <div className="h-2 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 ease-out ${
+                  warningLevel === 'critical'
+                    ? 'bg-red-600 dark:bg-red-500'
+                    : warningLevel === 'warning'
+                    ? 'bg-orange-600 dark:bg-orange-500'
+                    : 'bg-yellow-600 dark:bg-yellow-500'
+                }`}
+                style={{ width: `${Math.min(usagePercent, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
 
         <button
           onClick={handleStartNewChat}

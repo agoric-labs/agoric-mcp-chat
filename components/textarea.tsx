@@ -1,9 +1,13 @@
 import { modelID } from "@/ai/providers";
 import { Textarea as ShadcnTextarea } from "@/components/ui/textarea";
-import { ArrowUp, Loader2, Code2Icon, AlertTriangle } from "lucide-react";
-import { ModelPicker } from "./model-picker";
+import { ArrowUp, Loader2, AlertTriangle, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { type UIMessage } from "@ai-sdk/react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface InputProps {
   input: string;
@@ -117,7 +121,7 @@ export const Textarea = ({
         className="bg-background/50 dark:bg-muted/50 backdrop-blur-sm w-full rounded-2xl pr-10 xs:pr-12 pt-3 xs:pt-4 pb-12 xs:pb-16 border-input focus-visible:ring-ring placeholder:text-muted-foreground min-h-10 xs:min-h-12 max-h-16 xs:max-h-20 sm:max-h-24 md:max-h-32"
         value={input}
         autoFocus={autoFocus}
-        placeholder={isContextFull ? "Context full - please start a new chat" : "Send a message..."}
+        placeholder={isContextFull ? "Context at 90% - start a new chat to continue" : "Send a message..."}
         onChange={handleInputChange}
         disabled={isContextFull}
         onKeyDown={(e) => {
@@ -134,16 +138,30 @@ export const Textarea = ({
 
       {/* Token Counter Display */}
       {tokenCounter && messages.length > 0 && (
-        <div className="absolute left-2 xs:left-3 bottom-2 xs:bottom-3 flex items-center gap-1 xs:gap-1.5 text-[10px] xs:text-xs font-mono">
-          {tokenCounter.warningLevel !== 'safe' && (
-            <AlertTriangle
-              className={`h-2.5 w-2.5 xs:h-3 xs:w-3 ${tokenCounter.displayColor}`}
-            />
-          )}
-          <span className={`${tokenCounter.displayColor} transition-colors duration-300`}>
-            {tokenCounter.displayText}
-          </span>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="absolute left-2 xs:left-3 bottom-2 xs:bottom-3 flex items-center gap-1 xs:gap-1.5 px-1.5 xs:px-2 py-0.5 xs:py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 cursor-help">
+              {tokenCounter.warningLevel !== 'safe' && (
+                <AlertTriangle
+                  className={`h-2.5 w-2.5 xs:h-3 xs:w-3 ${tokenCounter.displayColor}`}
+                />
+              )}
+              <span className={`${tokenCounter.displayColor} transition-colors duration-300 text-[10px] xs:text-xs font-medium tabular-nums`}>
+                {tokenCounter.displayText}
+              </span>
+              <span className="text-[9px] xs:text-[10px] text-muted-foreground/70 font-normal">
+                tokens
+              </span>
+              <Info className="h-2.5 w-2.5 xs:h-3 xs:w-3 text-muted-foreground/50 ml-0.5" />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            <p className="font-semibold mb-1">Context Window Usage</p>
+            <p className="text-xs text-muted-foreground">
+              Shows how much of the model&apos;s context window is being used by this conversation.
+            </p>
+          </TooltipContent>
+        </Tooltip>
       )}
 
       <button
@@ -151,7 +169,7 @@ export const Textarea = ({
         onClick={isStreaming ? stop : undefined}
         disabled={isContextFull || (!isStreaming && !input.trim()) || (isStreaming && status === "submitted")}
         className="absolute right-1 xs:right-2 bottom-1 xs:bottom-2 rounded-full p-1.5 xs:p-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed transition-all duration-200"
-        title={isContextFull ? "Context full - start a new chat to continue" : ""}
+        title={isContextFull ? "Context at 90% - start a new chat to continue" : ""}
       >
         {isStreaming ? (
           <Loader2 className="h-3 w-3 xs:h-4 xs:w-4 text-primary-foreground animate-spin" />
