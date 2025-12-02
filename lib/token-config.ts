@@ -4,6 +4,10 @@ export const TOKEN_CONFIG = {
   HIGH_USAGE_THRESHOLD: 180_000,
   KEEP_RECENT_MESSAGES: 8,
   SUMMARY_MAX_OUTPUT_TOKENS: 15_000,
+  // Token estimation constants
+  CHARS_PER_TOKEN: 3.5, // Average characters per token (adjusted for JSON-heavy content)
+  TOOL_CALL_OVERHEAD: 50, // Approximate token overhead per tool call
+  TOOL_SCHEMA_OVERHEAD: 1050, // Approximate tokens per tool schema
 } as const;
 
 export function shouldWarnContextUsage(currentTokens: number): boolean {

@@ -16,7 +16,7 @@ import { manageContext } from '@/lib/context-manager';
 import { wrapToolExecution } from '@/lib/tool-result-manager';
 import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
 import { validateInputLength } from '@/lib/guardrails';
-import { TOKEN_CONFIG, shouldWarnContextUsage, getContextUtilization, isHighTokenUsage } from '@/lib/token-config';
+import { TOKEN_CONFIG, isHighTokenUsage } from '@/lib/token-config';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
@@ -446,6 +446,10 @@ export async function POST(req: Request) {
 
   const coreMessages = convertToModelMessages(messages);
 
+  // Calculate token estimates for accuracy tracking
+  const systemPromptTokens = Math.ceil(finalSystemPrompt.length / TOKEN_CONFIG.CHARS_PER_TOKEN);
+  const toolSchemaTokens = Object.keys(tools).length * TOKEN_CONFIG.TOOL_SCHEMA_OVERHEAD;
+
   const contextResult = await manageContext(coreMessages, {
     maxTokens: TOKEN_CONFIG.MAX_CONTEXT_TOKENS,
     keepRecentMessages: TOKEN_CONFIG.KEEP_RECENT_MESSAGES,
@@ -453,19 +457,15 @@ export async function POST(req: Request) {
     systemPrompt: finalSystemPrompt,
   });
 
+  const finalEstimatedTokens = systemPromptTokens +
+    Math.ceil(JSON.stringify(contextResult.messages).length / TOKEN_CONFIG.CHARS_PER_TOKEN) +
+    toolSchemaTokens;
+
   if (contextResult.summarized) {
     console.log(
-      `[Context Manager] Applied ${contextResult.method}: ` +
-        `${contextResult.originalTokens} → ${contextResult.newTokens} tokens ` +
+      `[Context Manager] Summarized ${contextResult.originalTokens} → ${contextResult.newTokens} tokens ` +
         `(saved ${contextResult.tokensSaved})`,
     );
-
-    const utilizationPercent = getContextUtilization(contextResult.newTokens);
-    if (shouldWarnContextUsage(contextResult.newTokens)) {
-      console.warn(
-        `[WARN] Context still at ${utilizationPercent}% after ${contextResult.method}.`,
-      );
-    }
   }
 
   // If there was an error setting up MCP clients but we at least have composio tools, continue
@@ -506,18 +506,33 @@ export async function POST(req: Request) {
       //   await client.close();
       // }
 
-      console.log('[Stream Finished]', {
-        finishReason,
-        promptTokens: usage?.inputTokens,
-        completionTokens: usage?.outputTokens,
-        totalTokens: usage?.totalTokens,
-      });
+      // Log usage and token estimation accuracy
+      if (usage?.inputTokens) {
+        const estimationError = finalEstimatedTokens - usage.inputTokens;
+        const errorPercent = ((Math.abs(estimationError) / usage.inputTokens) * 100).toFixed(1);
 
-      if (usage?.totalTokens && isHighTokenUsage(usage.totalTokens)) {
-        console.warn(
-          `[High Token Usage] ${usage.totalTokens.toLocaleString()} tokens used. ` +
-            `Close to context limits.`,
-        );
+        console.log('[Stream Finished]', {
+          finishReason,
+          promptTokens: usage.inputTokens,
+          completionTokens: usage.outputTokens,
+          totalTokens: usage.totalTokens,
+          estimationAccuracy: `${errorPercent}% error`,
+        });
+
+        if (Math.abs(estimationError) / usage.inputTokens > 0.2) {
+          console.warn(
+            `[WARN] Token estimation off by ${errorPercent}%! ` +
+            `Estimated ${finalEstimatedTokens}, actual ${usage.inputTokens}.`
+          );
+        }
+
+        if (usage.totalTokens && isHighTokenUsage(usage.totalTokens)) {
+          console.warn(
+            `[WARN] High token usage: ${usage.totalTokens.toLocaleString()} tokens.`
+          );
+        }
+      } else {
+        console.log('[Stream Finished]', { finishReason });
       }
     },
   });

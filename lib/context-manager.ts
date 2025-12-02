@@ -2,10 +2,6 @@ import { generateText, type ModelMessage } from 'ai';
 import { model } from '@/ai/providers';
 import { TOKEN_CONFIG } from './token-config';
 
-// Token estimation constants
-const CHARS_PER_TOKEN = 4; // Average characters per token for estimation
-const TOOL_CALL_OVERHEAD = 50; // Approximate token overhead per tool call
-
 // Split point search constants
 const TOOL_BOUNDARY_SEARCH_WINDOW = 3; // Max messages to search back when looking for matching tool-call boundaries
 
@@ -44,7 +40,7 @@ type MessageWithTools = ModelMessage & {
 };
 
 export function estimateTokens(content: string | ModelMessage[]): number {
-  if (typeof content === 'string') return Math.ceil(content.length / CHARS_PER_TOKEN);
+  if (typeof content === 'string') return Math.ceil(content.length / TOKEN_CONFIG.CHARS_PER_TOKEN);
 
   let totalChars = 0;
   for (const msg of content) {
@@ -56,11 +52,11 @@ export function estimateTokens(content: string | ModelMessage[]): number {
     const msgWithTools = msg as MessageWithTools;
     if (msgWithTools.toolInvocations?.length) {
       const toolCount = msgWithTools.toolInvocations.length;
-      totalChars += toolCount * TOOL_CALL_OVERHEAD;
+      totalChars += toolCount * TOKEN_CONFIG.TOOL_CALL_OVERHEAD;
     }
   }
 
-  return Math.ceil(totalChars / CHARS_PER_TOKEN);
+  return Math.ceil(totalChars / TOKEN_CONFIG.CHARS_PER_TOKEN);
 }
 
 export interface ContextManagerConfig {

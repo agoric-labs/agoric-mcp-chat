@@ -1,3 +1,5 @@
+import { TOKEN_CONFIG } from './token-config';
+
 /**
  * Tool result size limit configuration.
  *
@@ -8,8 +10,6 @@
 export interface ToolResultConfig {
   maxChars?: number;
 }
-
-export const CHARS_PER_TOKEN = 4;
 
 // Size limit for tool results to prevent context window overflow
 // Claude: 200k tokens total budget
@@ -44,7 +44,6 @@ function safeStringify(value: unknown): string {
   }
 }
 
-
 /**
  * Processes tool results and enforces size limits.
  * @param toolName - Name of the tool (for logging and error messages)
@@ -66,8 +65,10 @@ export function processToolResult(
     typeof result === 'string' ? result : safeStringify(result);
 
   if (content.length > cfg.maxChars) {
-    const actualTokens = Math.round(content.length / CHARS_PER_TOKEN);
-    const maxTokens = Math.round(cfg.maxChars / CHARS_PER_TOKEN);
+    const actualTokens = Math.round(
+      content.length / TOKEN_CONFIG.CHARS_PER_TOKEN,
+    );
+    const maxTokens = Math.round(cfg.maxChars / TOKEN_CONFIG.CHARS_PER_TOKEN);
 
     const errorMsg = JSON.stringify({
       type: 'tool-result-size-error',
@@ -82,7 +83,7 @@ export function processToolResult(
     const sample = content.slice(0, 200).replace(/\n/g, ' ') + '...';
     console.error(
       `[TOOL RESULT SIZE ERROR] ${toolName}: ${content.length.toLocaleString()} chars (${actualTokens.toLocaleString()} tokens) > ${cfg.maxChars.toLocaleString()} chars limit`,
-      `\nSample: ${sample}`
+      `\nSample: ${sample}`,
     );
 
     return errorMsg;
@@ -127,7 +128,8 @@ export function wrapToolExecution<
       const result = await originalFn(...args);
       return processToolResult(toolName, result, config);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
 
       console.error(`[Tool Execution Error] ${toolName}:`, error);
