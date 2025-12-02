@@ -453,7 +453,7 @@ export async function POST(req: Request) {
     systemPrompt: finalSystemPrompt,
   });
 
-  if (contextResult.wasSummarized) {
+  if (contextResult.summarized) {
     console.log(
       `[Context Manager] Applied ${contextResult.method}: ` +
         `${contextResult.originalTokens} → ${contextResult.newTokens} tokens ` +
