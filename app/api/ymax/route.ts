@@ -35,6 +35,11 @@ interface MCPServerConfig {
   headers?: KeyValuePair[];
 }
 
+interface MCPToolExecutable {
+  execute: (input: unknown, options?: unknown) => Promise<unknown> | unknown;
+  [key: string]: unknown;
+}
+
 export async function POST(req: Request) {
   // Extract context from URL query params
   const url = new URL(req.url);
@@ -250,16 +255,16 @@ export async function POST(req: Request) {
         Object.keys(mcptools),
       );
 
-      const wrappedTools: Record<string, any> = {};
+      const wrappedTools: Record<string, MCPToolExecutable> = {};
       for (const [toolName, tool] of Object.entries(mcptools)) {
-        const originalTool = tool as any;
+        const originalTool = tool as MCPToolExecutable;
 
         wrappedTools[toolName] = {
           ...originalTool,
           execute: wrapToolExecution(
             toolName,
-            async (args: any, options: any) =>
-              originalTool.execute(args, options),
+            async (input: unknown, options?: unknown) =>
+              originalTool.execute(input, options),
           ),
         };
       }
