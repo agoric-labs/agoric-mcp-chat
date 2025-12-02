@@ -22,7 +22,7 @@ const middleware = extractReasoningMiddleware({
 });
 
 // Helper to get API keys from environment variables first, then localStorage
-const getApiKey = (key: string): string | undefined => {
+export const getApiKey = (key: string): string | undefined => {
   // Check for environment variables first
   if (process.env[key]) {
     return process.env[key] || undefined;
