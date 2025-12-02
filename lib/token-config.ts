@@ -1,9 +1,9 @@
 export const TOKEN_CONFIG = {
-  MAX_CONTEXT_TOKENS: 70_000,
+  MAX_CONTEXT_TOKENS: 150_000,
   CONTEXT_WARNING_THRESHOLD: 0.9,
-  HIGH_USAGE_THRESHOLD: 80_000,
+  HIGH_USAGE_THRESHOLD: 180_000,
   KEEP_RECENT_MESSAGES: 8,
-  SUMMARY_MAX_OUTPUT_TOKENS: 2000,
+  SUMMARY_MAX_OUTPUT_TOKENS: 15_000,
 } as const;
 
 export function shouldWarnContextUsage(currentTokens: number): boolean {
@@ -13,10 +13,8 @@ export function shouldWarnContextUsage(currentTokens: number): boolean {
   );
 }
 
-export function getContextUtilization(currentTokens: number): number {
-  return (
-    Math.round((currentTokens / TOKEN_CONFIG.MAX_CONTEXT_TOKENS) * 1000) / 10
-  );
+export function getContextUtilization(currentTokens: number): string {
+  return ((currentTokens / TOKEN_CONFIG.MAX_CONTEXT_TOKENS) * 100).toFixed(2);
 }
 
 export function isHighTokenUsage(totalTokens: number): boolean {
