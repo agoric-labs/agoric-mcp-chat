@@ -1,8 +1,7 @@
 "use client";
 
 import { defaultModel, type modelID } from "@/ai/providers";
-import { UIMessage, useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { useChat } from "@ai-sdk/react";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
@@ -22,6 +21,7 @@ import { EditorProvider, useEditor } from "@/lib/context/editor-context";
 import { FloatingEditor } from "./floating-editor";
 import { useTokenCounter } from "@/lib/hooks/use-token-counter";
 import { ContextWarningBanner } from "./context-warning-banner";
+import { useTokenTracking } from "@/lib/hooks/use-token-tracking";
 
 // Type for chat data from DB
 interface ChatData {
@@ -105,6 +105,8 @@ function ChatContent() {
   // Manage input state manually in v5
   const [input, setInput] = useState("");
 
+  const { tokenUsage, createTokenTrackingTransport } = useTokenTracking();
+
   const {
     messages,
     sendMessage,
@@ -112,7 +114,7 @@ function ChatContent() {
     stop,
   } = useChat({
     id: chatId || generatedChatId, // Use generated ID if no chatId in URL
-    transport: new DefaultChatTransport({
+    transport: createTokenTrackingTransport({
       api: apiUrl,
       prepareSendMessagesRequest({ messages }) {
         return {
@@ -144,12 +146,9 @@ function ChatContent() {
     },
   });
 
-  // Define loading state early so it can be used in effects
   const isLoading = status === "streaming" || status === "submitted";
-
-  // Track token usage
-  const tokenCounter = useTokenCounter(messages, selectedModel);
-  const isContextFull = tokenCounter.warningLevel === 'critical';
+  const tokenCounter = useTokenCounter(selectedModel, tokenUsage);
+  const isContextFull = tokenCounter.warningLevel === 'blocked';
 
   // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback(

@@ -1,4 +1,4 @@
-import { TOKEN_CONFIG } from './token-config';
+import { estimateTokens } from './token-estimation';
 
 /**
  * Tool result size limit configuration.
@@ -32,9 +32,7 @@ function safeStringify(value: unknown): string {
     return JSON.stringify(value, (_key, val) => {
       // Handle circular references
       if (typeof val === 'object' && val !== null) {
-        if (seen.has(val)) {
-          return '[Circular]';
-        }
+        if (seen.has(val)) return '[Circular]';
         seen.add(val);
       }
       return val;
@@ -65,10 +63,8 @@ export function processToolResult(
     typeof result === 'string' ? result : safeStringify(result);
 
   if (content.length > cfg.maxChars) {
-    const actualTokens = Math.round(
-      content.length / TOKEN_CONFIG.CHARS_PER_TOKEN,
-    );
-    const maxTokens = Math.round(cfg.maxChars / TOKEN_CONFIG.CHARS_PER_TOKEN);
+    const actualTokens = estimateTokens(content);
+    const maxTokens = estimateTokens('x'.repeat(cfg.maxChars));
 
     const errorMsg = JSON.stringify({
       type: 'tool-result-size-error',
@@ -122,8 +118,7 @@ export function wrapToolExecution<
   originalFn: (...args: TArgs) => TReturn,
 ): (...args: TArgs) => Promise<string> {
   return async (...args: TArgs): Promise<string> => {
-    const config = YMAX_TOOL_CONFIGS[toolName] ?? undefined;
-
+    const config = YMAX_TOOL_CONFIGS[toolName];
     try {
       const result = await originalFn(...args);
       return processToolResult(toolName, result, config);

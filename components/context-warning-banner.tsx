@@ -2,15 +2,15 @@
 
 import { AlertTriangle, MessageSquarePlus, X, Info } from "lucide-react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSessionManagement } from "@/lib/hooks/use-session-management";
 
 interface ContextWarningBannerProps {
-  warningLevel: 'safe' | 'info' | 'warning' | 'critical';
+  warningLevel: 'safe' | 'warning' | 'blocked';
   usagePercent: number;
 }
 
@@ -18,28 +18,14 @@ export function ContextWarningBanner({
   warningLevel,
   usagePercent
 }: ContextWarningBannerProps) {
-  const router = useRouter();
   const [dismissed, setDismissed] = useState(false);
+  const { startNewChat } = useSessionManagement();
 
-  // Don't show banner for safe level or if dismissed
   if (warningLevel === 'safe' || dismissed) {
     return null;
   }
-
-  const handleStartNewChat = () => {
-    router.push('/');
-  };
-
-  // Determine banner styling based on warning level
   const getBannerStyles = () => {
     switch (warningLevel) {
-      case 'info':
-        return {
-          bg: 'bg-yellow-50 dark:bg-yellow-950/20',
-          border: 'border-yellow-200 dark:border-yellow-800',
-          text: 'text-yellow-900 dark:text-yellow-100',
-          icon: 'text-yellow-600 dark:text-yellow-400',
-        };
       case 'warning':
         return {
           bg: 'bg-orange-50 dark:bg-orange-950/20',
@@ -47,7 +33,7 @@ export function ContextWarningBanner({
           text: 'text-orange-900 dark:text-orange-100',
           icon: 'text-orange-600 dark:text-orange-400',
         };
-      case 'critical':
+      case 'blocked':
         return {
           bg: 'bg-red-50 dark:bg-red-950/20',
           border: 'border-red-200 dark:border-red-800',
@@ -66,12 +52,10 @@ export function ContextWarningBanner({
 
   const getMessage = () => {
     switch (warningLevel) {
-      case 'info':
-        return 'Context usage is getting high. Consider starting a new chat soon.';
       case 'warning':
-        return 'Context usage is high. Starting a new chat is recommended.';
-      case 'critical':
-        return 'Context nearly full. Please start a new chat to continue.';
+        return 'Context usage is high. Consider starting a new chat soon.';
+      case 'blocked':
+        return 'Context is full. Please start a new chat to continue.';
       default:
         return '';
     }
@@ -115,11 +99,9 @@ export function ContextWarningBanner({
             <div className="h-2 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-500 ease-out ${
-                  warningLevel === 'critical'
+                  warningLevel === 'blocked'
                     ? 'bg-red-600 dark:bg-red-500'
-                    : warningLevel === 'warning'
-                    ? 'bg-orange-600 dark:bg-orange-500'
-                    : 'bg-yellow-600 dark:bg-yellow-500'
+                    : 'bg-orange-600 dark:bg-orange-500'
                 }`}
                 style={{ width: `${Math.min(usagePercent, 100)}%` }}
               />
@@ -128,9 +110,9 @@ export function ContextWarningBanner({
         </div>
 
         <button
-          onClick={handleStartNewChat}
+          onClick={startNewChat}
           className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-            warningLevel === 'critical'
+            warningLevel === 'blocked'
               ? 'bg-red-600 hover:bg-red-700 text-white'
               : 'bg-primary hover:bg-primary/90 text-primary-foreground'
           }`}
