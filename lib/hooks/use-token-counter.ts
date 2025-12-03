@@ -45,7 +45,7 @@ export function useTokenCounter(
       ? `${(maxTokens / 1000).toFixed(0)}k`
       : maxTokens.toString();
     const tooltipText = tokens === undefined
-      ? 'Token count available after first response'
+      ? 'Context usage'
       : `${usagePercent}% - ${formattedCurrent}/${formattedMax} context used`;
 
     return {
