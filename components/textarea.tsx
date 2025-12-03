@@ -139,7 +139,7 @@ export const Textarea = ({
       /> */}
 
       {/* Token Counter Display */}
-      {tokenCounter && messages.length > 0 && (
+      {tokenCounter && (messages.length > 0 || tokenCounter.warningLevel !== TokenWarningLevel.SAFE) && (
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="absolute left-2 xs:left-3 bottom-2 xs:bottom-3 flex items-center gap-1 xs:gap-1.5 px-1.5 xs:px-2 py-0.5 xs:py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 cursor-help">

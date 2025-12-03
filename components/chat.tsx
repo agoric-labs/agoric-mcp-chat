@@ -272,6 +272,10 @@ function ChatContent() {
       {messages.length === 0 ? (
         <div className="max-w-xl mx-auto w-full">
           <ProjectOverview heading={title} />
+          <ContextWarningBanner
+            warningLevel={tokenCounter.warningLevel}
+            usagePercent={tokenCounter.usagePercent}
+          />
           <form onSubmit={handleFormSubmit} className="mt-4 w-full mx-auto">
             <Textarea
               selectedModel={selectedModel}
@@ -287,8 +291,6 @@ function ChatContent() {
               isContextFull={isContextFull}
             />
           </form>
-          {/* Only show carousel when no messages exist */}
-          {/* <VerticalTextCarousel/> */}
         </div>
       ) : (
         <>
