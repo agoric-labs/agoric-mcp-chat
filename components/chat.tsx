@@ -10,28 +10,16 @@ import { toast } from "sonner";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { getUserId } from "@/lib/user-id";
 import { useLocalStorage } from "@/lib/hooks/use-local-storage";
-import { STORAGE_KEYS, TokenWarningLevel } from "@/lib/constants";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-// import { convertToUIMessages } from "@/lib/chat-store";
-import { type Message as DBMessage } from "@/lib/db/schema";
+import { TokenWarningLevel } from "@/lib/constants";
+import { useQueryClient } from "@tanstack/react-query";
 import { nanoid } from "nanoid";
 import { useMCP } from "@/lib/context/mcp-context";
-// import VerticalTextCarousel from "@/components/ui/carousel";
 import { EditorProvider, useEditor } from "@/lib/context/editor-context";
 import { FloatingEditor } from "./floating-editor";
 import { useTokenCounter } from "@/lib/hooks/use-token-counter";
 import { ContextWarningBanner } from "./context-warning-banner";
 import { useTokenTracking } from "@/lib/hooks/use-token-tracking";
 
-// Type for chat data from DB
-interface ChatData {
-  id: string;
-  messages: DBMessage[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Inner chat component that consumes the EditorContext
 function ChatContent() {
   const router = useRouter();
   const params = useParams();
@@ -47,15 +35,14 @@ function ChatContent() {
     "selectedModel",
     defaultModel,
   );
-  const [userId, setUserId] = useState<string>(getUserId());
+  const [userId] = useState<string>(getUserId());
   const [generatedChatId, setGeneratedChatId] = useState<string>("");
 
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
 
   // Get the editor context
-  const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } =
-    useEditor();
+  const { submittedCode, submissionKey, clearSubmittedCode } = useEditor();
 
   // Add event listener for code submissions
   useEffect(() => {
@@ -105,10 +92,11 @@ function ChatContent() {
   // Manage input state manually in v5
   const [input, setInput] = useState("");
 
-  const { tokenUsage, createTokenTrackingTransport } = useTokenTracking();
+  const { tokenUsage, resetTokenUsage, createTokenTrackingTransport } = useTokenTracking();
 
   const {
     messages,
+    setMessages,
     sendMessage,
     status,
     stop,
@@ -149,6 +137,17 @@ function ChatContent() {
   const isLoading = status === "streaming" || status === "submitted";
   const tokenCounter = useTokenCounter(selectedModel, tokenUsage);
   const isContextFull = tokenCounter.warningLevel === TokenWarningLevel.BLOCKED;
+
+  const startNewSession = useCallback(() => {
+    setMessages([]);
+    resetTokenUsage();
+    setGeneratedChatId(nanoid());
+    setInput('');
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryString = searchParams.toString();
+    const newPath = queryString ? `/?${queryString}` : '/';
+    router.replace(newPath);
+  }, [setMessages, resetTokenUsage, router]);
 
   // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback(
@@ -275,6 +274,7 @@ function ChatContent() {
           <ContextWarningBanner
             warningLevel={tokenCounter.warningLevel}
             usagePercent={tokenCounter.usagePercent}
+            onStartNewChat={startNewSession}
           />
           <form onSubmit={handleFormSubmit} className="mt-4 w-full mx-auto">
             <Textarea
@@ -302,10 +302,10 @@ function ChatContent() {
             />
           </div>
           <div className="w-full mx-auto px-2 xs:px-0">
-            {/* Context Warning Banner */}
             <ContextWarningBanner
               warningLevel={tokenCounter.warningLevel}
               usagePercent={tokenCounter.usagePercent}
+              onStartNewChat={startNewSession}
             />
             <form
               onSubmit={handleFormSubmit}

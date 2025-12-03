@@ -2,20 +2,20 @@
 
 import { AlertTriangle, MessageSquarePlus, X } from "lucide-react";
 import { useState } from "react";
-import { useSessionManagement } from "@/lib/hooks/use-session-management";
 import { TokenWarningLevel } from "@/lib/constants";
 
 interface ContextWarningBannerProps {
   warningLevel: TokenWarningLevel;
   usagePercent: number;
+  onStartNewChat: () => void;
 }
 
 export function ContextWarningBanner({
   warningLevel,
-  usagePercent
+  usagePercent,
+  onStartNewChat
 }: Readonly<ContextWarningBannerProps>) {
   const [dismissed, setDismissed] = useState(false);
-  const { startNewChat } = useSessionManagement();
 
   if (warningLevel === TokenWarningLevel.SAFE || dismissed) {
     return null;
@@ -46,7 +46,7 @@ export function ContextWarningBanner({
 
       <div className="flex items-center gap-2 flex-shrink-0">
         <button
-          onClick={startNewChat}
+          onClick={onStartNewChat}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <MessageSquarePlus className="h-3 w-3" />

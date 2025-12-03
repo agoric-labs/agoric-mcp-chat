@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
 import { DefaultChatTransport } from 'ai';
 
-/**
- * Lightweight transport wrapper that intercepts data-token-usage SSE events
- * without modifying the SDK's core behavior.
- */
 export function useTokenTracking() {
   const [tokenUsage, setTokenUsage] = useState<number | undefined>(undefined);
+
+  const resetTokenUsage = useCallback(() => {
+    setTokenUsage(undefined);
+  }, []);
 
   const createTokenTrackingTransport = useCallback(
     (config: ConstructorParameters<typeof DefaultChatTransport>[0]) => {
@@ -80,6 +80,6 @@ export function useTokenTracking() {
     []
   );
 
-  return { tokenUsage, createTokenTrackingTransport };
+  return { tokenUsage, resetTokenUsage, createTokenTrackingTransport };
 }
 
