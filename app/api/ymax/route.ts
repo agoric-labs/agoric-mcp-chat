@@ -472,7 +472,11 @@ export async function POST(req: Request) {
     );
   }
 
-  let usageData: LanguageModelUsage | null = null;
+  let usageDataResolver: (value: LanguageModelUsage | null) => void;
+  const usageDataPromise = new Promise<LanguageModelUsage | null>((resolve) => {
+    usageDataResolver = resolve;
+  });
+
   const result = streamText({
     model: model.languageModel(selectedModel),
     system: finalSystemPrompt,
@@ -497,7 +501,6 @@ export async function POST(req: Request) {
     },
     async onFinish({ usage, finishReason }: { usage?: LanguageModelUsage; finishReason?: string }) {
       if (usage) {
-        usageData = usage;
         console.log('[Stream Finished]', {
           finishReason,
           promptTokens: usage.inputTokens,
@@ -505,8 +508,10 @@ export async function POST(req: Request) {
           totalTokens: usage.totalTokens,
           modelContextLimit,
         });
+        usageDataResolver(usage);
       } else {
         console.log('[Stream Finished]', { finishReason });
+        usageDataResolver(null);
       }
     },
   });
@@ -530,12 +535,13 @@ export async function POST(req: Request) {
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
-              if (usageData) {
+              const finalUsageData = await usageDataPromise;
+              if (finalUsageData) {
                 const data = `data: ${JSON.stringify({ 
                   type: 'data-token-usage', 
-                  inputTokens: usageData.inputTokens,
-                  outputTokens: usageData.outputTokens,
-                  totalTokens: usageData.totalTokens,
+                  inputTokens: finalUsageData.inputTokens,
+                  outputTokens: finalUsageData.outputTokens,
+                  totalTokens: finalUsageData.totalTokens,
                 })}\n\n`;
                 controller.enqueue(encoder.encode(data));
               }

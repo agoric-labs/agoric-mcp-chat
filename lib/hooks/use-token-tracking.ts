@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { DefaultChatTransport } from 'ai';
 
 /**
- * Minimal transport wrapper that intercepts data-token-usage SSE events
+ * Lightweight transport wrapper that intercepts data-token-usage SSE events
  * without modifying the SDK's core behavior.
  */
 export function useTokenTracking() {
@@ -48,10 +48,9 @@ export function useTokenTracking() {
                     if (line.startsWith('data: ')) {
                       try {
                         const data = JSON.parse(line.slice(6));
-                        // Extract token usage and filter out from stream
                         if (data.type === 'data-token-usage' && data.inputTokens) {
                           setTokenUsage(data.inputTokens);
-                          continue; // Filter out our custom event
+                          continue;
                         }
                       } catch {
                         // Not JSON, pass through
