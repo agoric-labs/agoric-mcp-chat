@@ -1,80 +1,12 @@
 import { generateText, type ModelMessage } from 'ai';
 import { model } from '@/ai/providers';
+import { TOKEN_CONFIG } from './token-config';
 
-export function estimateTokens(content: string | ModelMessage[]): number {
-  if (typeof content === 'string') return Math.ceil(content.length / 3.5);
+// Split point search constants
+const TOOL_BOUNDARY_SEARCH_WINDOW = 3; // Max messages to search back when looking for matching tool-call boundaries
 
-  let totalChars = 0;
-  for (const msg of content) {
-    // Serialize the message
-    const msgStr = JSON.stringify(msg);
-    totalChars += msgStr.length;
-
-    //extra weight for tool invocations (they have significant overhead)
-    if ((msg as any).toolInvocations?.length) {
-      const toolCount = (msg as any).toolInvocations.length;
-      totalChars += toolCount * 50; // Approximate overhead per tool call
-    }
-  }
-
-  return Math.ceil(totalChars / 3.5);
-}
-
-export interface ContextManagerConfig {
-  maxTokens?: number;
-  keepRecentMessages?: number;
-  debug?: boolean;
-  systemPrompt?: string;
-}
-
-export const DEFAULT_CONTEXT_CONFIG: Required<
-  Omit<ContextManagerConfig, 'contextEditConfig' | 'systemPrompt'>
-> = {
-  maxTokens: 100_000, // Maximum tokens before triggering summarization
-  keepRecentMessages: 10,
-  debug: false,
-};
-
-export interface ContextManagerResult {
-  messages: ModelMessage[];
-  wasSummarized: boolean;
-  originalTokens: number;
-  newTokens: number;
-  tokensSaved: number;
-  method?: 'api' | 'context-editing' | 'none';
-}
-
-export interface ContextEditingOptions {
-  clearThinking?: {
-    enabled?: boolean;
-    keepThinkingTurns?: number;
-  };
-  clearToolUses?: {
-    enabled?: boolean;
-    triggerInputTokens?: number;
-    keepToolUses?: number;
-    clearAtLeastTokens?: number;
-    excludeTools?: string[];
-  };
-  debug?: boolean;
-}
-
-function formatMessageForSummary(msg: ModelMessage): string {
-  const content =
-    typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-  return `${msg.role.toUpperCase()}: ${content.slice(0, 300)}`;
-}
-
-async function summarizeWithDirectAPI(
-  messages: ModelMessage[],
-): Promise<string> {
-  const conversation = messages.map(formatMessageForSummary).join('\n');
-
-  const result = await generateText({
-    model: model.languageModel('claude-4-5-sonnet'),
-    temperature: 0.3,
-    maxOutputTokens: 2000,
-    system: `You are summarizing a conversation about DeFi portfolio optimization and Agoric blockchain operations.
+// System prompt for conversation summarization
+const SUMMARIZATION_SYSTEM_PROMPT = `You are summarizing a conversation about DeFi portfolio optimization and Agoric blockchain operations.
 
 Create a structured, information-dense summary that preserves critical context for continuing the conversation:
 
@@ -100,7 +32,78 @@ Create a structured, information-dense summary that preserves critical context f
 - User confirmations or rejections
 - Pending actions or follow-up tasks
 
-Focus on facts, numbers, and actionable information. Omit pleasantries, acknowledgments, and repetitive explanations. Preserve exact protocol names, chain identifiers, token symbols, and numerical values.`,
+Focus on facts, numbers, and actionable information. Omit pleasantries, acknowledgments, and repetitive explanations. Preserve exact protocol names, chain identifiers, token symbols, and numerical values.`;
+
+// Extended type for messages that may contain tool invocations
+type MessageWithTools = ModelMessage & {
+  toolInvocations?: Array<unknown>;
+};
+
+export function estimateTokens(content: string | ModelMessage[]): number {
+  if (typeof content === 'string') return Math.ceil(content.length / TOKEN_CONFIG.CHARS_PER_TOKEN);
+
+  let totalChars = 0;
+  for (const msg of content) {
+    // Serialize the message
+    const msgStr = JSON.stringify(msg);
+    totalChars += msgStr.length;
+
+    //extra weight for tool invocations (they have significant overhead)
+    const msgWithTools = msg as MessageWithTools;
+    if (msgWithTools.toolInvocations?.length) {
+      const toolCount = msgWithTools.toolInvocations.length;
+      totalChars += toolCount * TOKEN_CONFIG.TOOL_CALL_OVERHEAD;
+    }
+  }
+
+  return Math.ceil(totalChars / TOKEN_CONFIG.CHARS_PER_TOKEN);
+}
+
+export interface ContextManagerConfig {
+  maxTokens?: number;
+  keepRecentMessages?: number;
+  debug?: boolean;
+  systemPrompt?: string;
+}
+
+export const DEFAULT_CONTEXT_CONFIG: Required<
+  Omit<ContextManagerConfig, 'systemPrompt'>
+> = {
+  maxTokens: TOKEN_CONFIG.MAX_CONTEXT_TOKENS,
+  keepRecentMessages: TOKEN_CONFIG.KEEP_RECENT_MESSAGES,
+  debug: false,
+};
+
+export enum ContextMethod {
+  API = 'api',
+  NONE = 'none',
+}
+
+export interface ContextManagerResult {
+  messages: ModelMessage[];
+  summarized: boolean;
+  originalTokens: number;
+  newTokens: number;
+  tokensSaved: number;
+  method: ContextMethod;
+}
+
+
+function formatMessageForSummary(msg: ModelMessage): string {
+  const content =
+    typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+  return `${msg.role.toUpperCase()}: ${content.slice(0, 300)}`;
+}
+
+async function summarizeWithDirectAPI(
+  messages: ModelMessage[],
+): Promise<string> {
+  const conversation = messages.map(formatMessageForSummary).join('\n');
+
+  const result = await generateText({
+    model: model.languageModel('claude-4-5-haiku'),
+    maxOutputTokens: TOKEN_CONFIG.SUMMARY_MAX_OUTPUT_TOKENS,
+    system: SUMMARIZATION_SYSTEM_PROMPT,
     messages: [
       {
         role: 'user',
@@ -121,11 +124,11 @@ export async function manageContext(
   if (messages.length === 0) {
     return {
       messages: [],
-      wasSummarized: false,
+      summarized: false,
       originalTokens: 0,
       newTokens: 0,
       tokensSaved: 0,
-      method: 'none',
+      method: ContextMethod.NONE,
     };
   }
 
@@ -149,11 +152,11 @@ export async function manageContext(
   if (originalTokens < maxTokens) {
     return {
       messages,
-      wasSummarized: false,
+      summarized: false,
       originalTokens,
       newTokens: originalTokens,
       tokensSaved: 0,
-      method: 'none',
+      method: ContextMethod.NONE,
     };
   }
 
@@ -167,11 +170,11 @@ export async function manageContext(
     console.log(`Too few messages (${oldMessages.length}) to summarize.`);
     return {
       messages,
-      wasSummarized: false,
+      summarized: false,
       originalTokens,
       newTokens: originalTokens,
       tokensSaved: 0,
-      method: 'none',
+      method: ContextMethod.NONE,
     };
   }
 
@@ -191,30 +194,32 @@ export async function manageContext(
 
   return {
     messages: newMessages,
-    wasSummarized: true,
+    summarized: true,
     originalTokens,
     newTokens,
     tokensSaved,
-    method: 'api',
+    method: ContextMethod.API,
   };
 }
 
-function findSafeSplitPoint(messages: ModelMessage[], keepRecentCount: number): number {
+export function findSafeSplitPoint(messages: ModelMessage[], keepRecentCount: number): number {
   const idealSplitPoint = Math.max(0, messages.length - keepRecentCount);
 
   if (idealSplitPoint === 0 || idealSplitPoint >= messages.length) {
     return idealSplitPoint;
   }
 
-  for (let i = idealSplitPoint; i >= Math.max(0, idealSplitPoint - 3); i--) {
+  const searchWindowStart = Math.max(0, idealSplitPoint - TOOL_BOUNDARY_SEARCH_WINDOW);
+
+  for (let i = idealSplitPoint; i >= searchWindowStart; i--) {
     const msg = messages[i];
 
     if (msg.role === 'tool') {
-      for (let j = i - 1; j >= 0; j--) {
+      for (let j = i - 1; j >= searchWindowStart; j--) {
         const prevMsg = messages[j];
         if (prevMsg.role === 'assistant') {
           const content = Array.isArray(prevMsg.content) ? prevMsg.content : [];
-          const hasToolCalls = Array.isArray(content) && content.some((part: any) => part.type === 'tool-call');
+          const hasToolCalls = Array.isArray(content) && content.some((part) => part.type === 'tool-call');
           if (hasToolCalls) {
             return j;
           }
@@ -224,7 +229,7 @@ function findSafeSplitPoint(messages: ModelMessage[], keepRecentCount: number): 
 
     if (msg.role === 'assistant' && i + 1 < messages.length) {
       const content = Array.isArray(msg.content) ? msg.content : [];
-      const hasToolCalls = Array.isArray(content) && content.some((part: any) => part.type === 'tool-call');
+      const hasToolCalls = Array.isArray(content) && content.some((part) => part.type === 'tool-call');
 
       if (hasToolCalls && messages[i + 1].role === 'tool') {
         return i;
