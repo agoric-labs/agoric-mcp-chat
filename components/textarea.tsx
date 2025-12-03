@@ -8,6 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { TokenWarningLevel } from "@/lib/constants";
 
 interface InputProps {
   input: string;
@@ -22,7 +23,7 @@ interface InputProps {
   tokenCounter?: {
     displayText: string;
     displayColor: string;
-    warningLevel: 'safe' | 'warning' | 'blocked';
+    warningLevel: TokenWarningLevel;
     usagePercent: number;
     tooltipText: string;
   };
@@ -142,7 +143,7 @@ export const Textarea = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="absolute left-2 xs:left-3 bottom-2 xs:bottom-3 flex items-center gap-1 xs:gap-1.5 px-1.5 xs:px-2 py-0.5 xs:py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 cursor-help">
-              {tokenCounter.warningLevel !== 'safe' && (
+              {tokenCounter.warningLevel !== TokenWarningLevel.SAFE && (
                 <AlertTriangle
                   className={`h-2.5 w-2.5 xs:h-3 xs:w-3 ${tokenCounter.displayColor}`}
                 />

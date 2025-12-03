@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { MODEL_CONTEXT_LIMITS, TOKEN_THRESHOLDS } from '@/lib/constants';
+import { MODEL_CONTEXT_LIMITS, TOKEN_THRESHOLDS, TokenWarningLevel } from '@/lib/constants';
 import { type modelID } from '@/ai/providers';
 
 export interface TokenCounterState {
   usagePercent: number;
-  warningLevel: 'safe' | 'warning' | 'blocked';
+  warningLevel: TokenWarningLevel;
   displayColor: string;
   displayText: string;
   currentTokens: number;
@@ -25,14 +25,14 @@ export function useTokenCounter(
     const usageRatio = maxTokens > 0 ? currentTokens / maxTokens : 0;
     const usagePercent = Math.round(usageRatio * 100);
 
-    let warningLevel: TokenCounterState['warningLevel'] = 'safe';
+    let warningLevel: TokenCounterState['warningLevel'] = TokenWarningLevel.SAFE;
     let displayColor = 'text-green-600 dark:text-green-400';
 
     if (usageRatio >= TOKEN_THRESHOLDS.BLOCK) {
-      warningLevel = 'blocked';
+      warningLevel = TokenWarningLevel.BLOCKED;
       displayColor = 'text-red-600 dark:text-red-400';
     } else if (usageRatio >= TOKEN_THRESHOLDS.WARNING) {
-      warningLevel = 'warning';
+      warningLevel = TokenWarningLevel.WARNING;
       displayColor = 'text-orange-600 dark:text-orange-400';
     }
 

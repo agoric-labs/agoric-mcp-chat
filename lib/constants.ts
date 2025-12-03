@@ -21,4 +21,11 @@ export const MODEL_CONTEXT_LIMITS: Record<string, number> = {
 export const TOKEN_THRESHOLDS = {
   WARNING: 0.95,   // 95% - Show warning, suggest new chat
   BLOCK: 1.0,      // 100% - Block input, force new chat
-} as const; 
+} as const;
+
+// Token usage warning levels
+export enum TokenWarningLevel {
+  SAFE = 'safe',
+  WARNING = 'warning',
+  BLOCKED = 'blocked',
+} 

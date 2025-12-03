@@ -8,32 +8,33 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSessionManagement } from "@/lib/hooks/use-session-management";
+import { TokenWarningLevel } from "@/lib/constants";
 
 interface ContextWarningBannerProps {
-  warningLevel: 'safe' | 'warning' | 'blocked';
+  warningLevel: TokenWarningLevel;
   usagePercent: number;
 }
 
 export function ContextWarningBanner({
   warningLevel,
   usagePercent
-}: ContextWarningBannerProps) {
+}: Readonly<ContextWarningBannerProps>) {
   const [dismissed, setDismissed] = useState(false);
   const { startNewChat } = useSessionManagement();
 
-  if (warningLevel === 'safe' || dismissed) {
+  if (warningLevel === TokenWarningLevel.SAFE || dismissed) {
     return null;
   }
   const getBannerStyles = () => {
     switch (warningLevel) {
-      case 'warning':
+      case TokenWarningLevel.WARNING:
         return {
           bg: 'bg-orange-50 dark:bg-orange-950/20',
           border: 'border-orange-200 dark:border-orange-800',
           text: 'text-orange-900 dark:text-orange-100',
           icon: 'text-orange-600 dark:text-orange-400',
         };
-      case 'blocked':
+      case TokenWarningLevel.BLOCKED:
         return {
           bg: 'bg-red-50 dark:bg-red-950/20',
           border: 'border-red-200 dark:border-red-800',
@@ -52,9 +53,9 @@ export function ContextWarningBanner({
 
   const getMessage = () => {
     switch (warningLevel) {
-      case 'warning':
+      case TokenWarningLevel.WARNING:
         return 'Context usage is high. Consider starting a new chat soon.';
-      case 'blocked':
+      case TokenWarningLevel.BLOCKED:
         return 'Context is full. Please start a new chat to continue.';
       default:
         return '';
@@ -99,7 +100,7 @@ export function ContextWarningBanner({
             <div className="h-2 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-500 ease-out ${
-                  warningLevel === 'blocked'
+                  warningLevel === TokenWarningLevel.BLOCKED
                     ? 'bg-red-600 dark:bg-red-500'
                     : 'bg-orange-600 dark:bg-orange-500'
                 }`}
@@ -112,7 +113,7 @@ export function ContextWarningBanner({
         <button
           onClick={startNewChat}
           className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-            warningLevel === 'blocked'
+            warningLevel === TokenWarningLevel.BLOCKED
               ? 'bg-red-600 hover:bg-red-700 text-white'
               : 'bg-primary hover:bg-primary/90 text-primary-foreground'
           }`}

@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { getUserId } from "@/lib/user-id";
 import { useLocalStorage } from "@/lib/hooks/use-local-storage";
-import { STORAGE_KEYS } from "@/lib/constants";
+import { STORAGE_KEYS, TokenWarningLevel } from "@/lib/constants";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 // import { convertToUIMessages } from "@/lib/chat-store";
 import { type Message as DBMessage } from "@/lib/db/schema";
@@ -148,7 +148,7 @@ function ChatContent() {
 
   const isLoading = status === "streaming" || status === "submitted";
   const tokenCounter = useTokenCounter(selectedModel, tokenUsage);
-  const isContextFull = tokenCounter.warningLevel === 'blocked';
+  const isContextFull = tokenCounter.warningLevel === TokenWarningLevel.BLOCKED;
 
   // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback(
