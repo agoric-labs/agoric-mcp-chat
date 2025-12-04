@@ -148,9 +148,11 @@ export const Textarea = ({
                   className={`h-2.5 w-2.5 xs:h-3 xs:w-3 ${tokenCounter.displayColor}`}
                 />
               )}
-              <span className={`${tokenCounter.displayColor} transition-colors duration-300 text-[10px] xs:text-xs font-medium tabular-nums`}>
-                {tokenCounter.displayText}
-              </span>
+              {tokenCounter.warningLevel !== TokenWarningLevel.BLOCKED && (
+                <span className={`${tokenCounter.displayColor} transition-colors duration-300 text-[10px] xs:text-xs font-medium tabular-nums`}>
+                  {tokenCounter.displayText}
+                </span>
+              )}
             </div>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-xs">

@@ -39,9 +39,11 @@ export function ContextWarningBanner({
         <span className="text-muted-foreground">
           {message}
         </span>
-        <span className="text-foreground font-medium tabular-nums">
-          {usagePercent}%
-        </span>
+        {!isBlocked && (
+          <span className="text-foreground font-medium tabular-nums">
+            {usagePercent}%
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0">

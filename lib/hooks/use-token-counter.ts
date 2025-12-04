@@ -36,7 +36,14 @@ export function useTokenCounter(
       displayColor = 'text-orange-600 dark:text-orange-400';
     }
 
-    const displayText = tokens === undefined ? '—' : `${usagePercent}%`;
+    let displayText: string;
+    if (tokens === undefined) {
+      displayText = '—';
+    } else if (warningLevel === TokenWarningLevel.BLOCKED) {
+      displayText = '—';
+    } else {
+      displayText = `${usagePercent}%`;
+    }
 
     const formattedCurrent = currentTokens >= 1000
       ? `${(currentTokens / 1000).toFixed(0)}k`
@@ -44,9 +51,14 @@ export function useTokenCounter(
     const formattedMax = maxTokens >= 1000
       ? `${(maxTokens / 1000).toFixed(0)}k`
       : maxTokens.toString();
-    const tooltipText = tokens === undefined
-      ? 'Context usage'
-      : `${usagePercent}% - ${formattedCurrent}/${formattedMax} context used`;
+    let tooltipText: string;
+    if (tokens === undefined) {
+      tooltipText = 'Context usage';
+    } else if (warningLevel === TokenWarningLevel.BLOCKED) {
+      tooltipText = 'Context is full';
+    } else {
+      tooltipText = `${usagePercent}% - ${formattedCurrent}/${formattedMax} context used`;
+    }
 
     return {
       usagePercent,

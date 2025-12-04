@@ -19,8 +19,8 @@ export const MODEL_CONTEXT_LIMITS: Record<string, number> = {
 
 // Token usage warning thresholds (percentages)
 export const TOKEN_THRESHOLDS = {
-  WARNING: 0.95,   // 95% - Show warning, suggest new chat
-  BLOCK: 1.0,      // 100% - Block input, force new chat
+  WARNING: 0.90,   // 90% - Show warning, suggest new chat
+  BLOCK: 0.95,     // 95% - Block input, force new chat (5% safety buffer to prevent server errors)
 } as const;
 
 // Token usage warning levels
