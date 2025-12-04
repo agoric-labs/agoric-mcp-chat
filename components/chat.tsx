@@ -1,8 +1,7 @@
 "use client";
 
 import { defaultModel, type modelID } from "@/ai/providers";
-import { UIMessage, useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { useChat } from "@ai-sdk/react";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
@@ -11,25 +10,16 @@ import { toast } from "sonner";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { getUserId } from "@/lib/user-id";
 import { useLocalStorage } from "@/lib/hooks/use-local-storage";
-import { STORAGE_KEYS } from "@/lib/constants";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-// import { convertToUIMessages } from "@/lib/chat-store";
-import { type Message as DBMessage } from "@/lib/db/schema";
+import { TokenWarningLevel } from "@/lib/constants";
+import { useQueryClient } from "@tanstack/react-query";
 import { nanoid } from "nanoid";
 import { useMCP } from "@/lib/context/mcp-context";
-// import VerticalTextCarousel from "@/components/ui/carousel";
 import { EditorProvider, useEditor } from "@/lib/context/editor-context";
 import { FloatingEditor } from "./floating-editor";
+import { useTokenCounter } from "@/lib/hooks/use-token-counter";
+import { ContextWarningBanner } from "./context-warning-banner";
+import { useTokenTracking } from "@/lib/hooks/use-token-tracking";
 
-// Type for chat data from DB
-interface ChatData {
-  id: string;
-  messages: DBMessage[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Inner chat component that consumes the EditorContext
 function ChatContent() {
   const router = useRouter();
   const params = useParams();
@@ -45,15 +35,14 @@ function ChatContent() {
     "selectedModel",
     defaultModel,
   );
-  const [userId, setUserId] = useState<string>(getUserId());
+  const [userId] = useState<string>(getUserId());
   const [generatedChatId, setGeneratedChatId] = useState<string>("");
 
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
 
   // Get the editor context
-  const { submittedCode, editorLanguage, submissionKey, clearSubmittedCode } =
-    useEditor();
+  const { submittedCode, submissionKey, clearSubmittedCode } = useEditor();
 
   // Add event listener for code submissions
   useEffect(() => {
@@ -103,14 +92,21 @@ function ChatContent() {
   // Manage input state manually in v5
   const [input, setInput] = useState("");
 
+  const { tokenUsage, resetTokenUsage, createTokenTrackingTransport } = useTokenTracking();
+
+  //temporary param to test token usage warningflows without hitting actual token usage limits - TODO: remove after testing
+  const testTokenUsage = searchParams.get("testTokenUsage");
+  const effectiveTokenUsage = testTokenUsage ? Number.parseInt(testTokenUsage, 10) : tokenUsage;
+
   const {
     messages,
+    setMessages,
     sendMessage,
     status,
     stop,
   } = useChat({
     id: chatId || generatedChatId, // Use generated ID if no chatId in URL
-    transport: new DefaultChatTransport({
+    transport: createTokenTrackingTransport({
       api: apiUrl,
       prepareSendMessagesRequest({ messages }) {
         return {
@@ -133,17 +129,48 @@ function ChatContent() {
     },
     onError: (error) => {
       console.error("CHAT: onError", error);
+      
+      let errorMessage = error.message;
+      if (errorMessage.includes('Context limit exceeded') || errorMessage.includes('context has reached')) {
+        errorMessage = "Context limit reached. Please start a new chat to continue.";
+      }
+      
       toast.error(
-        error.message.length > 0
-          ? error.message
+        errorMessage.length > 0
+          ? errorMessage
           : "An error occured, please try again later.",
         { position: "top-center", richColors: true },
       );
     },
   });
 
-  // Define loading state early so it can be used in effects
   const isLoading = status === "streaming" || status === "submitted";
+  const tokenCounter = useTokenCounter(selectedModel, effectiveTokenUsage);
+  const isContextFull = tokenCounter.warningLevel === TokenWarningLevel.BLOCKED;
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const startNewSession = useCallback(() => {
+    setIsTransitioning(true);
+    
+    // Fade out first, then clear and fade in
+    const fadeOutDuration = 200;
+    setTimeout(() => {
+      // Clear state and navigate while invisible
+      setMessages([]);
+      resetTokenUsage();
+      setGeneratedChatId(nanoid());
+      setInput('');
+      const searchParams = new URLSearchParams(window.location.search);
+      const queryString = searchParams.toString();
+      const newPath = queryString ? `/?${queryString}` : '/';
+      router.replace(newPath);
+      
+      // Fade in after a brief moment to ensure DOM is ready
+      setTimeout(() => {
+        setIsTransitioning(false);
+      }, 10);
+    }, fadeOutDuration);
+  }, [setMessages, resetTokenUsage, router]);
 
   // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback(
@@ -265,8 +292,13 @@ function ChatContent() {
   return (
     <div className="h-dvh flex flex-col justify-center w-full max-w-3xl mx-auto px-2 xs:px-4 sm:px-6 py-2 xs:py-4 md:py-4 min-w-0">
       {messages.length === 0 ? (
-        <div className="max-w-xl mx-auto w-full">
+        <div className={`max-w-xl mx-auto w-full transition-opacity duration-200 ease-in-out ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
           <ProjectOverview heading={title} />
+          <ContextWarningBanner
+            warningLevel={tokenCounter.warningLevel}
+            usagePercent={tokenCounter.usagePercent}
+            onStartNewChat={startNewSession}
+          />
           <form onSubmit={handleFormSubmit} className="mt-4 w-full mx-auto">
             <Textarea
               selectedModel={selectedModel}
@@ -277,35 +309,46 @@ function ChatContent() {
               status={status}
               stop={stop}
               autoFocus={!disableAutoFocus}
+              messages={messages}
+              tokenCounter={tokenCounter}
+              isContextFull={isContextFull}
             />
           </form>
-          {/* Only show carousel when no messages exist */}
-          {/* <VerticalTextCarousel/> */}
         </div>
       ) : (
         <>
-          <div className="flex-1 overflow-y-auto min-h-0 pb-2">
+          <div className={`flex-1 overflow-y-auto min-h-0 pb-2 transition-opacity duration-200 ease-in-out ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
             <Messages
               messages={messages}
               isLoading={isLoading}
               status={status}
             />
           </div>
-          <form
-            onSubmit={handleFormSubmit}
-            className="mt-2 w-full mx-auto mb-2 xs:mb-4 sm:mb-auto px-2 xs:px-0"
-          >
-            <Textarea
-              selectedModel={selectedModel}
-              setSelectedModel={setSelectedModel}
-              handleInputChange={handleInputChange}
-              input={input}
-              isLoading={isLoading}
-              status={status}
-              stop={stop}
-              autoFocus={!disableAutoFocus}
+          <div className={`w-full mx-auto px-2 xs:px-0 transition-opacity duration-200 ease-in-out ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+            <ContextWarningBanner
+              warningLevel={tokenCounter.warningLevel}
+              usagePercent={tokenCounter.usagePercent}
+              onStartNewChat={startNewSession}
             />
-          </form>
+            <form
+              onSubmit={handleFormSubmit}
+              className="mt-2 mb-2 xs:mb-4 sm:mb-auto"
+            >
+              <Textarea
+                selectedModel={selectedModel}
+                setSelectedModel={setSelectedModel}
+                handleInputChange={handleInputChange}
+                input={input}
+                isLoading={isLoading}
+                status={status}
+                stop={stop}
+                autoFocus={!disableAutoFocus}
+                messages={messages}
+                tokenCounter={tokenCounter}
+                isContextFull={isContextFull}
+              />
+            </form>
+          </div>
         </>
       )}
 

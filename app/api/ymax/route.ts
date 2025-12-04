@@ -1,5 +1,5 @@
 import { model, type modelID } from "@/ai/providers";
-import { streamText, type UIMessage, convertToModelMessages, stepCountIs } from "ai";
+import { streamText, type UIMessage, convertToModelMessages, stepCountIs, type LanguageModelUsage } from "ai";
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { chats } from "@/lib/db/schema";
@@ -16,8 +16,8 @@ import { manageContext } from '@/lib/context-manager';
 import { wrapToolExecution } from '@/lib/tool-result-manager';
 import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
 import { validateInputLength } from '@/lib/guardrails';
-import { TOKEN_CONFIG, isHighTokenUsage } from '@/lib/token-config';
-
+import { TOKEN_CONFIG } from '@/lib/token-config';
+import { MODEL_CONTEXT_LIMITS } from '@/lib/constants';
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
 
@@ -39,6 +39,8 @@ interface MCPToolExecutable {
   execute: (input: unknown, options?: unknown) => Promise<unknown> | unknown;
   [key: string]: unknown;
 }
+
+
 
 export async function POST(req: Request) {
   // Extract context from URL query params
@@ -280,6 +282,7 @@ export async function POST(req: Request) {
   // Register cleanup for all clients
   if (mcpClients.length > 0) {
     req.signal.addEventListener("abort", async () => {
+      // Clean up MCP clients
       for (const client of mcpClients) {
         try {
           await client.close();
@@ -287,6 +290,7 @@ export async function POST(req: Request) {
           console.error("Error closing MCP client:", error);
         }
       }
+    
     });
   }
 
@@ -451,29 +455,28 @@ export async function POST(req: Request) {
 
   const coreMessages = convertToModelMessages(messages);
 
-  // Calculate token estimates for accuracy tracking
-  const systemPromptTokens = Math.ceil(finalSystemPrompt.length / TOKEN_CONFIG.CHARS_PER_TOKEN);
-  const toolSchemaTokens = Object.keys(tools).length * TOKEN_CONFIG.TOOL_SCHEMA_OVERHEAD;
+  const modelContextLimit =
+    MODEL_CONTEXT_LIMITS[selectedModel] || TOKEN_CONFIG.MAX_CONTEXT_TOKENS;
+  const safeMaxTokens = Math.floor(modelContextLimit * TOKEN_CONFIG.CONTEXT_MANAGEMENT_THRESHOLD);
 
   const contextResult = await manageContext(coreMessages, {
-    maxTokens: TOKEN_CONFIG.MAX_CONTEXT_TOKENS,
+    maxTokens: safeMaxTokens,
     keepRecentMessages: TOKEN_CONFIG.KEEP_RECENT_MESSAGES,
-    debug: false,
     systemPrompt: finalSystemPrompt,
+    toolCount: Object.keys(tools).length,
   });
-
-  const finalEstimatedTokens = systemPromptTokens +
-    Math.ceil(JSON.stringify(contextResult.messages).length / TOKEN_CONFIG.CHARS_PER_TOKEN) +
-    toolSchemaTokens;
 
   if (contextResult.summarized) {
     console.log(
-      `[Context Manager] Summarized ${contextResult.originalTokens} → ${contextResult.newTokens} tokens ` +
-        `(saved ${contextResult.tokensSaved})`,
+      `[Context Manager] Summarized ${contextResult.originalTokens} → ${contextResult.newTokens} tokens (saved ${contextResult.tokensSaved})`,
     );
   }
 
-  // If there was an error setting up MCP clients but we at least have composio tools, continue
+  let usageDataResolver: (value: LanguageModelUsage | null) => void;
+  const usageDataPromise = new Promise<LanguageModelUsage | null>((resolve) => {
+    usageDataResolver = resolve;
+  });
+
   const result = streamText({
     model: model.languageModel(selectedModel),
     system: finalSystemPrompt,
@@ -496,57 +499,69 @@ export async function POST(req: Request) {
     onError: (error) => {
       console.error(JSON.stringify(error, null, 2));
     },
-    async onFinish({ usage, finishReason }) {
-      // In v5, response.messages already contains all formatted messages
-      // await saveChat({
-      //   id,
-      //   userId,
-      //   messages: response.messages,
-      // });
-
-      // const dbMessages = convertToDBMessages(response.messages, id);
-      // await saveMessages({ messages: dbMessages });
-      // close all mcp clients
-      // for (const client of mcpClients) {
-      //   await client.close();
-      // }
-
-      // Log usage and token estimation accuracy
-      if (usage?.inputTokens) {
-        const estimationError = finalEstimatedTokens - usage.inputTokens;
-        const errorPercent = ((Math.abs(estimationError) / usage.inputTokens) * 100).toFixed(1);
-
+    async onFinish({ usage, finishReason }: { usage?: LanguageModelUsage; finishReason?: string }) {
+      if (usage) {
         console.log('[Stream Finished]', {
           finishReason,
           promptTokens: usage.inputTokens,
           completionTokens: usage.outputTokens,
           totalTokens: usage.totalTokens,
-          estimationAccuracy: `${errorPercent}% error`,
+          modelContextLimit,
         });
-
-        if (Math.abs(estimationError) / usage.inputTokens > 0.2) {
-          console.warn(
-            `[WARN] Token estimation off by ${errorPercent}%! ` +
-            `Estimated ${finalEstimatedTokens}, actual ${usage.inputTokens}.`
-          );
-        }
-
-        if (usage.totalTokens && isHighTokenUsage(usage.totalTokens)) {
-          console.warn(
-            `[WARN] High token usage: ${usage.totalTokens.toLocaleString()} tokens.`
-          );
-        }
+        usageDataResolver(usage);
       } else {
         console.log('[Stream Finished]', { finishReason });
+        usageDataResolver(null);
       }
     },
   });
 
-  return result.toUIMessageStreamResponse({
+  const streamResponse = result.toUIMessageStreamResponse({
     originalMessages: messages,
-    sendReasoning: true, // Enable streaming of reasoning/thinking content
+    sendReasoning: true,
     headers: {
       "Content-Type": "text/event-stream",
+      "X-Model-Context-Limit": modelContextLimit.toString(),
     },
   });
+
+  if (streamResponse.body) {
+    const reader = streamResponse.body.getReader();
+    const encoder = new TextEncoder();
+
+    const newStream = new ReadableStream({
+      async start(controller) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              const finalUsageData = await usageDataPromise;
+              if (finalUsageData) {
+                const data = `data: ${JSON.stringify({ 
+                  type: 'data-token-usage', 
+                  inputTokens: finalUsageData.inputTokens,
+                  outputTokens: finalUsageData.outputTokens,
+                  totalTokens: finalUsageData.totalTokens,
+                })}\n\n`;
+                controller.enqueue(encoder.encode(data));
+              }
+              controller.close();
+              break;
+            }
+            controller.enqueue(value);
+          }
+        } catch (error) {
+          controller.error(error);
+        }
+      },
+    });
+
+    return new Response(newStream, {
+      headers: streamResponse.headers,
+      status: streamResponse.status,
+      statusText: streamResponse.statusText,
+    });
+  }
+
+  return streamResponse;
 }

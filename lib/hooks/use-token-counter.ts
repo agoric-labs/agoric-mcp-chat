@@ -1,0 +1,73 @@
+import { useMemo } from 'react';
+import { MODEL_CONTEXT_LIMITS, TOKEN_THRESHOLDS, TokenWarningLevel } from '@/lib/constants';
+import { type modelID } from '@/ai/providers';
+
+export interface TokenCounterState {
+  usagePercent: number;
+  warningLevel: TokenWarningLevel;
+  displayColor: string;
+  displayText: string;
+  currentTokens: number;
+  maxTokens: number;
+  tooltipText: string;
+}
+
+export function useTokenCounter(
+  selectedModel: modelID,
+  tokens?: number
+): TokenCounterState {
+  const maxTokens = useMemo(() => {
+    return MODEL_CONTEXT_LIMITS[selectedModel] || 200_000;
+  }, [selectedModel]);
+
+  return useMemo((): TokenCounterState => {
+    const currentTokens = tokens ?? 0;
+    const usageRatio = maxTokens > 0 ? currentTokens / maxTokens : 0;
+    const usagePercent = Math.round(usageRatio * 100);
+
+    let warningLevel: TokenCounterState['warningLevel'] = TokenWarningLevel.SAFE;
+    let displayColor = 'text-green-600 dark:text-green-400';
+
+    if (usageRatio >= TOKEN_THRESHOLDS.BLOCK) {
+      warningLevel = TokenWarningLevel.BLOCKED;
+      displayColor = 'text-red-600 dark:text-red-400';
+    } else if (usageRatio >= TOKEN_THRESHOLDS.WARNING) {
+      warningLevel = TokenWarningLevel.WARNING;
+      displayColor = 'text-orange-600 dark:text-orange-400';
+    }
+
+    let displayText: string;
+    if (tokens === undefined) {
+      displayText = '—';
+    } else if (warningLevel === TokenWarningLevel.BLOCKED) {
+      displayText = '—';
+    } else {
+      displayText = `${usagePercent}%`;
+    }
+
+    const formattedCurrent = currentTokens >= 1000
+      ? `${(currentTokens / 1000).toFixed(0)}k`
+      : currentTokens.toString();
+    const formattedMax = maxTokens >= 1000
+      ? `${(maxTokens / 1000).toFixed(0)}k`
+      : maxTokens.toString();
+    let tooltipText: string;
+    if (tokens === undefined) {
+      tooltipText = 'Context usage';
+    } else if (warningLevel === TokenWarningLevel.BLOCKED) {
+      tooltipText = 'Context is full';
+    } else {
+      tooltipText = `${usagePercent}% - ${formattedCurrent}/${formattedMax} context used`;
+    }
+
+    return {
+      usagePercent,
+      warningLevel,
+      displayColor,
+      displayText,
+      currentTokens,
+      maxTokens,
+      tooltipText,
+    };
+  }, [tokens, maxTokens]);
+}
