@@ -2,7 +2,7 @@
 
 import { defaultModel, type modelID } from "@/ai/providers";
 import { Message, useChat } from "@ai-sdk/react";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
 import { Messages } from "./messages";
@@ -46,6 +46,8 @@ function ChatContent() {
   );
   const [userId, setUserId] = useState<string>("");
   const [generatedChatId, setGeneratedChatId] = useState<string>("");
+  const [traceIds, setTraceIds] = useState<Record<string, string>>({});
+  const pendingTraceIds = useRef<Map<string, string>>(new Map());
 
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
@@ -122,7 +124,34 @@ function ChatContent() {
       userId,
     },
     experimental_throttle: 500,
-    onFinish: () => {
+    
+    onResponse: (response) => {
+      const id = response.headers.get("X-Trace-Id");
+      if (id) {
+        pendingTraceIds.current.set('pending', id);
+      } else {
+        console.warn("No X-Trace-Id header found in response");
+      }
+    },
+    onFinish: (message) => {
+      const currentTraceId = pendingTraceIds.current.get('pending');
+      
+      if (currentTraceId) {
+        setTraceIds((prev) => {
+          const updated = {
+            ...prev,
+            [message.id]: currentTraceId,
+          };
+          console.log('Updated traceIds:', updated);
+          return updated;
+        });
+        
+        // Clear the pending trace ID
+        pendingTraceIds.current.delete('pending');
+      } else {
+        console.warn("No pendingTraceId when onFinish called");
+      }
+
       // Invalidate the chats query to refresh the sidebar
       if (userId) {
         queryClient.invalidateQueries({ queryKey: ["chats", userId] });
@@ -146,7 +175,7 @@ function ChatContent() {
   const handleFormSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-
+      
       if (!chatId && generatedChatId && input.trim()) {
         // If this is a new conversation, redirect to the chat page with the generated ID
         const effectiveChatId = generatedChatId;
@@ -284,6 +313,7 @@ function ChatContent() {
               messages={messages}
               isLoading={isLoading}
               status={status}
+              traceIds={traceIds}
             />
           </div>
           <form

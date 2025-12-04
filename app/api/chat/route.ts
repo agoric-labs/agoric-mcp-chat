@@ -9,9 +9,16 @@ import { eq, and } from 'drizzle-orm';
 import { experimental_createMCPClient as createMCPClient, MCPTransport } from 'ai';
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from 'ai/mcp-stdio';
 import { spawn } from "child_process";
+import { Langfuse } from "langfuse";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
+
+const langfuse = new Langfuse({
+  publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+  secretKey: process.env.LANGFUSE_SECRET_KEY,
+  baseUrl:  process.env.LANGFUSE_BASEURL
+});
 
 interface KeyValuePair {
   key: string;
@@ -32,7 +39,7 @@ export async function POST(req: Request) {
   const url = new URL(req.url);
   const contextParam = url.searchParams.get('context');
   const inoParam = url.searchParams.get('ino');
-  
+
   const {
     messages,
     chatId,
@@ -82,6 +89,19 @@ export async function POST(req: Request) {
   let tools = {};
   const mcpClients: any[] = [];
 
+  const lastUserMessage = messages[messages.length - 1];
+  const trace = langfuse.trace({
+    name: "chat-generation",
+    userId: userId || "anonymous",
+    sessionId: chatId,
+    input: lastUserMessage.content,
+    metadata: {
+      model: selectedModel,
+      contextParam,
+      inoParam
+    }
+  });
+
   // Process each MCP server configuration
   for (const mcpServer of mcpServers) {
     try {
@@ -104,7 +124,7 @@ export async function POST(req: Request) {
           url: transport.url,
           headersPresent: transport.headers ? Object.keys(transport.headers).join(', ') : 'none'
         });
-        
+
         // Validate URL
         try {
           new URL(mcpServer.url);
@@ -112,20 +132,20 @@ export async function POST(req: Request) {
         } catch (error) {
           console.error('Invalid URL format:', mcpServer.url, error);
         }
-        
+
         // Make a test request to check status before actual connection
         console.log('Making test request to URL:', mcpServer.url);
         fetch(mcpServer.url, {
           method: 'HEAD',
           headers: transport.headers
         })
-        .then(response => {
-          console.log('Test request response status:', response.status, response.statusText);
-          console.log('Test request response headers:', Object.fromEntries(response.headers.entries()));
-        })
-        .catch(error => {
-          console.error('Test request failed:', error);
-        });
+          .then(response => {
+            console.log('Test request response status:', response.status, response.statusText);
+            console.log('Test request response headers:', Object.fromEntries(response.headers.entries()));
+          })
+          .catch(error => {
+            console.error('Test request failed:', error);
+          });
       } else if (mcpServer.type === 'stdio') {
         // For stdio transport, we need command and args
         if (!mcpServer.command || !mcpServer.args || mcpServer.args.length === 0) {
@@ -223,7 +243,7 @@ export async function POST(req: Request) {
 
   // Build dynamic system prompt based on ino parameter
   let systemPrompt;
-  
+
   if (inoParam === 'true') {
     // Use Ymax system prompt for INO mode
     systemPrompt = `You are Ymax, an expert portfolio optimization AI specialized in Agoric ecosystem DeFi yield strategies.
@@ -371,20 +391,44 @@ export async function POST(req: Request) {
         },
       },
       anthropic: {
-        thinking: { 
-          type: 'enabled', 
-          budgetTokens: 12000 
+        thinking: {
+          type: 'enabled',
+          budgetTokens: 12000
         },
-      } 
+      }
     },
     onError: (error) => {
       console.error(JSON.stringify(error, null, 2));
     },
-    async onFinish({ response }) {
+    async onFinish({ response, text, usage }) {
       const allMessages = appendResponseMessages({
         messages,
         responseMessages: response.messages,
       });
+
+      trace.generation({
+        name: "llm-response",
+        model: selectedModel,
+        input: messages,
+        output: text,
+        usage: {
+          input: usage?.promptTokens || 0,
+          output: usage?.completionTokens || 0,
+          total: usage?.totalTokens || 0
+        },
+        metadata: {
+          responseMessages: response.messages
+        }
+      });
+
+      trace.update({ output: text });
+
+      await Promise.race([
+        langfuse.flushAsync(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Flush timeout')), 5000)
+        )
+      ]);
 
       // await saveChat({
       //   id,
@@ -403,6 +447,9 @@ export async function POST(req: Request) {
 
   result.consumeStream()
   return result.toDataStreamResponse({
+    headers: {
+      "X-Trace-Id": trace.id,
+    },
     sendReasoning: true,
     getErrorMessage: (error) => {
       if (error instanceof Error) {
