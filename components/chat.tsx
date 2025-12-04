@@ -3,7 +3,7 @@
 import { defaultModel, type modelID } from "@/ai/providers";
 import { UIMessage, useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { Textarea } from "./textarea";
 import { ProjectOverview } from "./project-overview";
 import { Messages } from "./messages";
@@ -47,6 +47,8 @@ function ChatContent() {
   );
   const [userId, setUserId] = useState<string>(getUserId());
   const [generatedChatId, setGeneratedChatId] = useState<string>("");
+  const [traceIds, setTraceIds] = useState<Record<string, string>>({});
+  const pendingTraceIds = useRef<Map<string, string>>(new Map());
 
   // Get MCP server data from context
   const { mcpServersForApi } = useMCP();
@@ -109,7 +111,7 @@ function ChatContent() {
     status,
     stop,
   } = useChat({
-    id: chatId || generatedChatId, // Use generated ID if no chatId in URL
+    id: chatId || generatedChatId,
     transport: new DefaultChatTransport({
       api: apiUrl,
       prepareSendMessagesRequest({ messages }) {
@@ -122,6 +124,16 @@ function ChatContent() {
             userId,
           },
         };
+      },
+      async fetch(url: RequestInfo | URL, options?: RequestInit) {
+        const response = await fetch(url, options);  
+        const traceId = response.headers.get("x-trace-id") || response.headers.get("X-Trace-Id");
+        if (traceId) {
+          pendingTraceIds.current.set('pending', traceId);
+        } else {
+          console.warn("Trace ID header missing in transport fetch.");
+        }
+        return response;
       },
     }),
     experimental_throttle: 50, // Lower throttle for smoother streaming (50ms)
@@ -144,6 +156,24 @@ function ChatContent() {
 
   // Define loading state early so it can be used in effects
   const isLoading = status === "streaming" || status === "submitted";
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role === 'assistant' && pendingTraceIds.current.has('pending')) {
+      const currentTraceId = pendingTraceIds.current.get('pending');
+      if (currentTraceId && !traceIds[lastMessage.id]) {
+        setTraceIds((prev) => ({
+          ...prev,
+          [lastMessage.id]: currentTraceId,
+        }));
+        if (status !== 'streaming') {
+          pendingTraceIds.current.delete('pending');
+        }
+      }
+    }
+  }, [messages, status, traceIds]);
 
   // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback(
@@ -289,6 +319,7 @@ function ChatContent() {
               messages={messages}
               isLoading={isLoading}
               status={status}
+              traceIds={traceIds}
             />
           </div>
           <form

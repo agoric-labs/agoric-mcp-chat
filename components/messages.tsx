@@ -3,18 +3,30 @@ import { Message } from "./message";
 import { useScrollToBottom } from "@/lib/hooks/use-scroll-to-bottom";
 import { SpinnerIcon } from "./icons";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
+
+interface MessagesProps {
+  messages: TMessage[];
+  isLoading: boolean;
+  status: "streaming" | "error" | "submitted" | "ready";
+  traceIds: Record<string, string>; 
+}
 
 export const Messages = ({
   messages,
   isLoading,
   status,
-}: {
-  messages: TMessage[];
-  isLoading: boolean;
-  status: "error" | "submitted" | "streaming" | "ready";
-}) => {
+  traceIds,
+}: MessagesProps) => {
   const [containerRef, endRef] = useScrollToBottom();
   
+  // Debug: Monitor traceIds updates
+  useEffect(() => {
+    if (Object.keys(traceIds).length > 0) {
+      console.log("Messages Component - Available Trace IDs:", traceIds);
+    }
+  }, [traceIds]);
+
   // Check if we're waiting for the first response
   const isWaitingForResponse = (status === "submitted" || status === "streaming") && 
     messages.length > 0 && 
@@ -26,15 +38,25 @@ export const Messages = ({
       ref={containerRef}
     >
       <div className="max-w-lg sm:max-w-3xl mx-auto py-2 xs:py-4 px-2 xs:px-4 sm:px-0">
-        {messages.map((m, i) => (
-          <Message
-            key={i}
-            isLatestMessage={i === messages.length - 1}
-            isLoading={isLoading}
-            message={m}
-            status={status}
-          />
-        ))}
+        {messages.map((m, i) => {
+          // Look up the trace ID for this specific message
+          const messageTraceId = traceIds[m.id];
+          
+          if (m.role === 'assistant' && !messageTraceId && status !== 'streaming') {
+             console.warn(`Trace ID missing for message: ${m.id}`);
+          }
+
+          return (
+            <Message
+              key={m.id}
+              isLatestMessage={i === messages.length - 1}
+              isLoading={isLoading}
+              message={m}
+              status={status}
+              traceId={messageTraceId}
+            />
+          );
+        })}
         
         {/* Show thinking indicator when waiting for assistant response */}
         {isWaitingForResponse && (
