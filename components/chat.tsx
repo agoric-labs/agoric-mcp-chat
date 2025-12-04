@@ -19,6 +19,7 @@ import { useMCP } from "@/lib/context/mcp-context";
 // import VerticalTextCarousel from "@/components/ui/carousel";
 import { EditorProvider, useEditor } from "@/lib/context/editor-context";
 import { FloatingEditor } from "./floating-editor";
+import { flushSync } from 'react-dom';
 
 // Type for chat data from DB
 interface ChatData {
@@ -137,13 +138,15 @@ function ChatContent() {
       const currentTraceId = pendingTraceIds.current.get('pending');
       
       if (currentTraceId) {
-        setTraceIds((prev) => {
-          const updated = {
-            ...prev,
-            [message.id]: currentTraceId,
-          };
-          console.log('Updated traceIds:', updated);
-          return updated;
+        flushSync(() => {
+          setTraceIds((prev) => {
+            const updated = {
+              ...prev,
+              [message.id]: currentTraceId,
+            };
+            console.log('Updated traceIds:', updated);
+            return updated;
+          });
         });
         
         // Clear the pending trace ID
