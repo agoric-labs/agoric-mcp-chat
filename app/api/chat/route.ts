@@ -451,12 +451,9 @@ export async function POST(req: Request) {
 
       trace.update({ output: text });
 
-      await Promise.race([
-        langfuse.flushAsync(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Flush timeout')), 5000)
-        )
-      ]);
+      langfuse.flushAsync().catch(err => 
+        console.error('Langfuse flush failed:', err)
+      );
     }
   });
 

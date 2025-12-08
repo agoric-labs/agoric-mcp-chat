@@ -2,7 +2,7 @@
 
 import type { UIMessage as TMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import equal from "fast-deep-equal";
 import { Markdown } from "./markdown";
@@ -152,12 +152,20 @@ const PurePreviewMessage = ({
   const hideReasoning = searchParams.get("hideReasoning") === "true";
   
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleFeedback = async (type: "up" | "down") => {
+    if (isSubmittingFeedback) return;
+
     const previousFeedback = feedback;
     const newValue = previousFeedback === type ? null : type;
     
     setFeedback(newValue);
+
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
 
     if (!traceId) {
       console.warn("No traceId available for feedback logging");
@@ -166,21 +174,35 @@ const PurePreviewMessage = ({
 
     if (!newValue) return;
 
-    try {
-      await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trace_id: traceId,
-          score: newValue === "up" ? 1 : 0,
-          comment: newValue === "down" ? "User clicked Thumbs Down" : "User clicked Thumbs Up"
-        }),
-      });
-    } catch (error) {
-      console.error("Failed to submit feedback", error);
-      setFeedback(previousFeedback);
-    }
+    feedbackTimeoutRef.current = setTimeout(async () => {
+      setIsSubmittingFeedback(true);
+      
+      try {
+        await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            trace_id: traceId,
+            score: newValue === "up" ? 1 : 0,
+            comment: newValue === "down" ? "User clicked Thumbs Down" : "User clicked Thumbs Up"
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to submit feedback", error);
+        setFeedback(previousFeedback);
+      } finally {
+        setIsSubmittingFeedback(false);
+      }
+    }, 1000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Create a string with all text parts for copy functionality
   const getMessageText = () => {
