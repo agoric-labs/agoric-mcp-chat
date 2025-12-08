@@ -2,12 +2,19 @@
 
 import type { UIMessage as TMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import equal from "fast-deep-equal";
 import { Markdown } from "./markdown";
 import { cn } from "@/lib/utils";
-import { ChevronDownIcon, ChevronUpIcon, LightbulbIcon, BrainIcon } from "lucide-react";
+import { 
+  ChevronDownIcon, 
+  ChevronUpIcon, 
+  LightbulbIcon, 
+  BrainIcon, 
+  ThumbsUp, 
+  ThumbsDown 
+} from "lucide-react";
 import { SpinnerIcon } from "./icons";
 import { ToolInvocation } from "./tool-invocation";
 import { CopyButton } from "./copy-button";
@@ -126,19 +133,76 @@ export function ReasoningMessagePart({
   );
 }
 
-const PurePreviewMessage = ({
-  message,
-  isLatestMessage,
-  status,
-}: {
+interface PurePreviewMessageProps {
   message: TMessage;
   isLoading: boolean;
   status: "error" | "submitted" | "streaming" | "ready";
   isLatestMessage: boolean;
-}) => {
+  traceId?: string;
+}
+
+const PurePreviewMessage = ({
+  message,
+  isLatestMessage,
+  status,
+  traceId,
+}: PurePreviewMessageProps) => {
   const searchParams = useSearchParams();
   const hideTools = searchParams.get("hideTools") === "true";
   const hideReasoning = searchParams.get("hideReasoning") === "true";
+  
+  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleFeedback = async (type: "up" | "down") => {
+    if (isSubmittingFeedback) return;
+
+    const previousFeedback = feedback;
+    const newValue = previousFeedback === type ? null : type;
+    
+    setFeedback(newValue);
+
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
+
+    if (!traceId) {
+      console.warn("No traceId available for feedback logging");
+      return;
+    }
+
+    if (!newValue) return;
+
+    feedbackTimeoutRef.current = setTimeout(async () => {
+      setIsSubmittingFeedback(true);
+      
+      try {
+        await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            trace_id: traceId,
+            score: newValue === "up" ? 1 : 0,
+            comment: newValue === "down" ? "User clicked Thumbs Down" : "User clicked Thumbs Up"
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to submit feedback", error);
+        setFeedback(previousFeedback);
+      } finally {
+        setIsSubmittingFeedback(false);
+      }
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Create a string with all text parts for copy functionality
   const getMessageText = () => {
@@ -245,8 +309,36 @@ const PurePreviewMessage = ({
               }
             })}
             {shouldShowCopyButton && (
-              <div className="flex justify-start mt-2">
+              <div className="flex items-center justify-start gap-2 mt-2">
                 <CopyButton text={getMessageText()} />
+
+                <div className="h-4 w-[1px] bg-border/60 mx-1" />
+
+                <button
+                  onClick={() => handleFeedback("up")}
+                  className={cn(
+                    "p-1.5 rounded-md transition-colors hover:bg-muted",
+                    feedback === "up" 
+                      ? "text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400" 
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  aria-label="Thumbs up"
+                >
+                  <ThumbsUp className="h-4 w-4" />
+                </button>
+
+                <button
+                  onClick={() => handleFeedback("down")}
+                  className={cn(
+                    "p-1.5 rounded-md transition-colors hover:bg-muted",
+                    feedback === "down" 
+                      ? "text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400" 
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  aria-label="Thumbs down"
+                >
+                  <ThumbsDown className="h-4 w-4" />
+                </button>
               </div>
             )}
           </div>
@@ -258,7 +350,7 @@ const PurePreviewMessage = ({
 
 export const Message = memo(PurePreviewMessage, (prevProps, nextProps) => {
   if (prevProps.status !== nextProps.status) return false;
-
+  if (prevProps.traceId !== nextProps.traceId) return false;
   if (nextProps.isLatestMessage && nextProps.status === "streaming") return false;
 
   if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;

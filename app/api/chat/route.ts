@@ -10,9 +10,16 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { spawn } from "child_process";
 import { agoricMcpToolSchemas } from "@/lib/mcp/agoric-tool-schemas";
 import { addAnthropicWebTools } from '@/lib/ai/anthropic-web-tools';
+import { Langfuse } from "langfuse";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
+
+const langfuse = new Langfuse({
+  publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+  secretKey: process.env.LANGFUSE_SECRET_KEY,
+  baseUrl: process.env.LANGFUSE_BASEURL
+});
 
 interface KeyValuePair {
   key: string;
@@ -83,6 +90,18 @@ export async function POST(req: Request) {
   let tools = {};
   const mcpClients: any[] = [];
 
+  const lastUserMessage = messages[messages.length - 1];
+  const trace = langfuse.trace({
+    name: "chat-generation",
+    userId: userId || "anonymous",
+    sessionId: chatId,
+    input: lastUserMessage.content,
+    metadata: {
+      model: selectedModel,
+      contextParam,
+      inoParam
+    }
+  });
   // Process each MCP server configuration
   for (const mcpServer of mcpServers) {
     try {
@@ -371,6 +390,16 @@ export async function POST(req: Request) {
   }
 
   // If there was an error setting up MCP clients but we at least have composio tools, continue
+  
+  const generation = trace.generation({
+    name: "llm-response",
+    model: selectedModel,
+    input: messages,
+    metadata: {
+      systemPrompt: systemPrompt.substring(0, 500)
+    }
+  });
+
   const result = streamText({
     model: model.languageModel(selectedModel),
     system: systemPrompt,
@@ -393,7 +422,7 @@ export async function POST(req: Request) {
     onError: (error) => {
       console.error(JSON.stringify(error, null, 2));
     },
-    async onFinish({ response }) {
+    async onFinish({ response, text, usage }) {
       // In v5, response.messages already contains all formatted messages
       // await saveChat({
       //   id,
@@ -407,6 +436,24 @@ export async function POST(req: Request) {
       // for (const client of mcpClients) {
       //   await client.close();
       // }
+
+      generation.update({
+        output: text,
+        usage: {
+          input: usage?.promptTokens || 0,
+          output: usage?.completionTokens || 0,
+          total: usage?.totalTokens || 0
+        },
+        metadata: {
+          responseMessages: response.messages
+        }
+      });
+
+      trace.update({ output: text });
+
+      langfuse.flushAsync().catch(err => 
+        console.error('Langfuse flush failed:', err)
+      );
     }
   });
 
@@ -415,6 +462,7 @@ export async function POST(req: Request) {
     sendReasoning: true, // Enable streaming of reasoning/thinking content
     headers: {
       "Content-Type": "text/event-stream",
+      "X-Trace-Id": trace.id,
     },
   });
 }
