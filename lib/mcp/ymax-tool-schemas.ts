@@ -179,55 +179,138 @@ export const ymaxMcptoolSchemas = {
         }),
     },
 
-    // --- Etherscan tools ---
-    'etherscan-get-balance': {
+    // --- Etherscan tools (DEPRECATED - Use Alchemy tools instead) ---
+    // @deprecated Etherscan has been replaced with Alchemy. These schemas are kept for backwards compatibility.
+    // 'etherscan-get-balance': {
+    //     inputSchema: z.object({
+    //         chainid: z.coerce.number().int().positive().describe('EVM chain ID (e.g., 1, 42161, 43114)'),
+    //         address: z
+    //             .string()
+    //             .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid 0x-address')
+    //             .describe('0x-prefixed 40-hex address'),
+    //         tag: z.enum(['latest']).optional().default('latest').describe('Block tag (latest)'),
+    //     }),
+    // },
+
+    // @deprecated Etherscan has been replaced with Alchemy. These schemas are kept for backwards compatibility.
+    // 'etherscan-get-token-transfers': {
+    //     inputSchema: z.object({
+    //         chainid: z.coerce.number().int().positive(),
+    //         address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+    //         page: z.coerce.number().int().positive().optional().default(1),
+    //         offset: z.coerce.number().int().positive().max(10000).optional().default(20),
+    //         sort: z.enum(['asc', 'desc']).optional().default('desc'),
+    //     }),
+    // },
+
+    // @deprecated Etherscan has been replaced with Alchemy. These schemas are kept for backwards compatibility.
+    // 'etherscan-get-internal-transactions': {
+    //     inputSchema: z.object({
+    //         chainid: z.coerce.number().int().positive(),
+    //         address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+    //         page: z.coerce.number().int().positive().optional().default(1),
+    //         offset: z.coerce.number().int().positive().max(10000).optional().default(20),
+    //         sort: z.enum(['asc', 'desc']).optional().default('desc'),
+    //     }),
+    // },
+
+    // @deprecated Etherscan has been replaced with Alchemy. These schemas are kept for backwards compatibility.
+    // 'etherscan-get-normal-transactions': {
+    //     inputSchema: z.object({
+    //         chainid: z.coerce.number().int().positive(),
+    //         address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+    //         page: z.coerce.number().int().positive().optional().default(1),
+    //         offset: z.coerce.number().int().positive().max(10000).optional().default(20),
+    //         sort: z.enum(['asc', 'desc']).optional().default('desc'),
+    //     }),
+    // },
+
+    // @deprecated Etherscan has been replaced with Alchemy. These schemas are kept for backwards compatibility.
+    // 'etherscan-get-tx-by-hash': {
+    //     inputSchema: z.object({
+    //         hash: z
+    //             .string()
+    //             .regex(/^(?:0x)?[a-fA-F0-9]{64}$/)
+    //             .describe('Transaction hash (with or without 0x)'),
+    //         chainid: z.coerce.number().int().positive().optional().describe('Optional chain ID to pin the lookup'),
+    //     }),
+    // },
+
+    // --- Alchemy tools ---
+    'alchemy-get-balance': {
         inputSchema: z.object({
-            chainid: z.coerce.number().int().positive().describe('EVM chain ID (e.g., 1, 42161, 43114)'),
-            address: z
+            chainid: z.coerce
+                .number()
+                .int()
+                .positive()
+                .describe(
+                    'EVM chain ID: 1 (Ethereum), 42161 (Arbitrum), 10 (Optimism), 8453 (Base), 43114 (Avalanche), 137 (Polygon)',
+                ),
+            address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid 0x-address'),
+            tag: z.enum(['latest']).optional().default('latest'),
+        }),
+    },
+
+    'alchemy-get-token-transfers': {
+        inputSchema: z.object({
+            chainid: z.coerce
+                .number()
+                .int()
+                .positive()
+                .describe(
+                    'EVM chain ID: 1 (Ethereum), 42161 (Arbitrum), 10 (Optimism), 8453 (Base), 43114 (Avalanche), 137 (Polygon)',
+                ),
+            address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+            direction: z
+                .enum(['sent', 'received', 'both'])
+                .optional()
+                .default('both')
+                .describe('Filter by transfer direction'),
+            pageKeySent: z
                 .string()
-                .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid 0x-address')
-                .describe('0x-prefixed 40-hex address'),
-            tag: z.enum(['latest']).optional().default('latest').describe('Block tag (latest)'),
-        }),
-    },
-
-    'etherscan-get-token-transfers': {
-        inputSchema: z.object({
-            chainid: z.coerce.number().int().positive(),
-            address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-            page: z.coerce.number().int().positive().optional().default(1),
-            offset: z.coerce.number().int().positive().max(10000).optional().default(20),
-            sort: z.enum(['asc', 'desc']).optional().default('desc'),
-        }),
-    },
-
-    'etherscan-get-internal-transactions': {
-        inputSchema: z.object({
-            chainid: z.coerce.number().int().positive(),
-            address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-            page: z.coerce.number().int().positive().optional().default(1),
-            offset: z.coerce.number().int().positive().max(10000).optional().default(20),
-            sort: z.enum(['asc', 'desc']).optional().default('desc'),
-        }),
-    },
-
-    'etherscan-get-normal-transactions': {
-        inputSchema: z.object({
-            chainid: z.coerce.number().int().positive(),
-            address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-            page: z.coerce.number().int().positive().optional().default(1),
-            offset: z.coerce.number().int().positive().max(10000).optional().default(20),
-            sort: z.enum(['asc', 'desc']).optional().default('desc'),
-        }),
-    },
-
-    'etherscan-get-tx-by-hash': {
-        inputSchema: z.object({
-            hash: z
+                .optional()
+                .describe('Pagination key for sent transfers'),
+            pageKeyReceived: z
                 .string()
-                .regex(/^(?:0x)?[a-fA-F0-9]{64}$/)
-                .describe('Transaction hash (with or without 0x)'),
-            chainid: z.coerce.number().int().positive().optional().describe('Optional chain ID to pin the lookup'),
+                .optional()
+                .describe('Pagination key for received transfers'),
+            maxCount: z.number().optional().default(100),
+        }),
+    },
+
+    'alchemy-get-internal-transactions': {
+        inputSchema: z.object({
+            chainid: z.coerce.number().int().positive().describe('Only supported on Ethereum (1) and Polygon (137)'),
+            address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+            maxCount: z.number().optional().default(100),
+        }),
+    },
+
+    'alchemy-get-normal-transactions': {
+        inputSchema: z.object({
+            chainid: z.coerce
+                .number()
+                .int()
+                .positive()
+                .describe(
+                    'EVM chain ID: 1 (Ethereum), 42161 (Arbitrum), 10 (Optimism), 8453 (Base), 43114 (Avalanche), 137 (Polygon)',
+                ),
+            address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+            maxCount: z.number().optional().default(100),
+        }),
+    },
+
+    'alchemy-get-tx-by-hash': {
+        inputSchema: z.object({
+            hash: z.string().regex(/^(?:0x)?[a-fA-F0-9]{64}$/),
+            chainid: z.coerce
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    'Optional chain ID. If omitted, searches: 1 (Ethereum), 42161 (Arbitrum), 43114 (Avalanche), 10 (Optimism), 8453 (Base), 137 (Polygon)',
+                ),
         }),
     },
 
