@@ -1,9 +1,4 @@
 /**
- * Utility functions extracted from chat.tsx for testability
- * Only contains actual business logic (no debugging code)
- */
-
-/**
  * Determines the API base URL based on search parameters
  */
 export function getApiBase(
