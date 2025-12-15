@@ -13,6 +13,16 @@ import { getUserId } from "@/lib/user-id";
 import { useLocalStorage } from "@/lib/hooks/use-local-storage";
 import { STORAGE_KEYS } from "@/lib/constants";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  getApiBase,
+  buildApiUrl,
+  decodeTitle,
+  isLoadingState,
+  parseMessageData,
+  isOrbitChatSubmission,
+  shouldSubmitCode,
+  buildChatUrl,
+} from "@/lib/chat-utils";
 // import { convertToUIMessages } from "@/lib/chat-store";
 import { type Message as DBMessage } from "@/lib/db/schema";
 import { nanoid } from "nanoid";
@@ -38,7 +48,7 @@ function ChatContent() {
   const contextParam = searchParams.get("context");
   const titleParam = searchParams.get("title");
   const disableAutoFocus = !!searchParams.get("disableAutoFocus");
-  const title = titleParam ? decodeURIComponent(titleParam) : "Agoric AI Chat";
+  const title = decodeTitle(titleParam);
   const queryClient = useQueryClient();
 
   const [selectedModel, setSelectedModel] = useLocalStorage<modelID>(
@@ -89,16 +99,8 @@ function ChatContent() {
   const useAgoricWebsiteMCP = searchParams.get("useAgoricWebsiteMCP");
   const theme = searchParams.get("theme");
 
-  let apiBase = "/api/chat"; // default
-  if (useAgoricWebsiteMCP) {
-    apiBase = "/api/support";
-  } else if (theme === "ymax") {
-    apiBase = "/api/ymax";
-  }
-
-  const apiUrl = newParams.toString()
-    ? `${apiBase}?${newParams.toString()}`
-    : apiBase;
+  const apiBase = getApiBase(useAgoricWebsiteMCP, theme);
+  const apiUrl = buildApiUrl(apiBase, newParams);
 
   // Manage input state manually in v5
   const [input, setInput] = useState("");
@@ -143,7 +145,7 @@ function ChatContent() {
   });
 
   // Define loading state early so it can be used in effects
-  const isLoading = status === "streaming" || status === "submitted";
+  const isLoading = isLoadingState(status);
 
   // Custom submit handler - Define this BEFORE using it in the effect
   const handleFormSubmit = useCallback(
@@ -158,10 +160,9 @@ function ChatContent() {
       // If this is a new conversation, update the URL without causing a remount
       if (!chatId && generatedChatId) {
         // Preserve all query parameters in navigation
-        const searchParams = new URLSearchParams(window.location.search);
-        const queryString = searchParams.toString();
-        const queryQuery = queryString ? `?${queryString}` : "";
-        window.history.replaceState({}, '', `/chat/${generatedChatId}${queryQuery}`);
+        const currentSearchParams = new URLSearchParams(window.location.search);
+        const newUrl = buildChatUrl(generatedChatId, currentSearchParams);
+        window.history.replaceState({}, '', newUrl);
       }
     },
     [chatId, generatedChatId, input, sendMessage],
@@ -176,20 +177,11 @@ function ChatContent() {
   const [lastSubmittedKey, setLastSubmittedKey] = useState<number>(0);
 
   useEffect(() => {
-    async function onMessage(e: MessageEvent) {
-      const data =
-        typeof e.data === "string"
-          ? (() => {
-            try {
-              return JSON.parse(e.data);
-            } catch {
-              return e.data;
-            }
-          })()
-          : e.data;
+    function onMessage(e: MessageEvent) {
+      const data = parseMessageData(e.data);
 
-      if (data?.type === "ORBIT_CHAT/SET_AND_SUBMIT") {
-        const text = data?.payload?.input ?? "";
+      if (isOrbitChatSubmission(data)) {
+        const text = data.payload.input;
         if (text) {
           sendMessage({ text });
         }
@@ -197,7 +189,7 @@ function ChatContent() {
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [sendMessage]);
 
   // Listen for submitted code and send it to the chat
   useEffect(() => {
@@ -210,16 +202,8 @@ function ChatContent() {
       lastSubmittedKey,
     );
 
-    // Only proceed if:
-    // 1. There's submitted code
-    // 2. Valid submission key that's different from the last one we processed
-    // 3. Not already loading
-    if (
-      submittedCode &&
-      submissionKey > 0 &&
-      submissionKey !== lastSubmittedKey &&
-      !isLoading
-    ) {
+    // Only proceed if conditions are met for code submission
+    if (shouldSubmitCode(submittedCode, submissionKey, lastSubmittedKey, isLoading)) {
       console.log(
         "CHAT: Preparing to submit code to chat, key changed:",
         submissionKey,
