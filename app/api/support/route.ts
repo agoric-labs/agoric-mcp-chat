@@ -470,7 +470,7 @@ export async function POST(req: Request) {
 
   return result.toUIMessageStreamResponse({
     originalMessages: messages,
-    sendReasoning: true, // Enable streaming of reasoning/thinking content
+    sendReasoning: false,
     headers: {
       "Content-Type": "text/event-stream",
     },
