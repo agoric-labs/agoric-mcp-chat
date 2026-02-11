@@ -426,11 +426,13 @@ export async function POST(req: Request) {
     }
   }
 
+  const modelMessages = await convertToModelMessages(messages);
+
   // If there was an error setting up MCP clients but we at least have composio tools, continue
   const result = streamText({
     model: model.languageModel(selectedModel),
     system: systemPrompt,
-    messages: convertToModelMessages(messages),
+    messages: modelMessages,
     tools,
     stopWhen: stepCountIs(20),
     providerOptions: {
