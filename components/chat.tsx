@@ -201,7 +201,7 @@ function ChatContent() {
 
   // Listen for submitted code and send it to the chat
   useEffect(() => {
-    console.log(
+    console.debug(
       "CHAT: submittedCode changed:",
       submittedCode,
       "key:",
@@ -220,7 +220,7 @@ function ChatContent() {
       submissionKey !== lastSubmittedKey &&
       !isLoading
     ) {
-      console.log(
+      console.debug(
         "CHAT: Preparing to submit code to chat, key changed:",
         submissionKey,
         "from:",
@@ -235,7 +235,7 @@ function ChatContent() {
         target: { value: submittedCode },
       } as React.ChangeEvent<HTMLTextAreaElement>;
 
-      console.log("CHAT: Setting input value:", submittedCode);
+      console.debug("CHAT: Setting input value:", submittedCode);
       handleInputChange(inputEvent);
 
       // Use a timeout to ensure the input is set before submitting
@@ -245,7 +245,7 @@ function ChatContent() {
           preventDefault: () => { },
         } as React.FormEvent<HTMLFormElement>;
 
-        console.log("CHAT: Submitting form with handleFormSubmit");
+        console.debug("CHAT: Submitting form with handleFormSubmit");
         handleFormSubmit(formEvent);
 
         // Clear the submitted code to prevent resubmission
